@@ -1,0 +1,8 @@
+README.html
+README_files/
+*.zarr
+*.h5
+data/
+.pixi
+.vscode/
+**/__pycache__/

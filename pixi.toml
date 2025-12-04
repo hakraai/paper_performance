@@ -1,0 +1,35 @@
+[workspace]
+name = "paper_performance"
+version = "0.1.0"
+description = "Performance testing, comparison and selection of induced seismicity rate models for the Groningen gas field"
+authors = ["D.A. Kraaijpoel"]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[activation]
+env = { PYTHONPATH = "$PIXI_PROJECT_ROOT/src/chaintools:$PIXI_PROJECT_ROOT/src" }
+
+[tasks]
+start = "jupyter lab"
+
+[dependencies]
+python = ">=3.10"
+numpy = "*"
+geopandas = "*"
+xarray = "*"
+tqdm = "*"
+scipy = "*"
+matplotlib = "*"
+arviz = "*"
+pandas = "*"
+ipywidgets = "*"
+pytensor = "*"
+pymc = "*"
+zarr = "*"
+jupyterlab = "*"
+requests = "*"
+pyyaml = "*"
+rioxarray = "*"
+h5py = "*"
+numba = "*"
+h5netcdf = "*"
