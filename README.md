@@ -30,7 +30,7 @@ paper_performance/
 
 ## Installation
 
-To reproduce the environment used for this analysis, we recommend using [Conda](https://docs.conda.io/en/latest/) or [Mamba](https://mamba.readthedocs.io/en/latest/).
+To reproduce the environment used for this analysis, we recommend using [pixi](https://pixi.sh/).
 
 1.  **Clone the repository:**
     ```bash
@@ -65,7 +65,7 @@ The primary results can be reproduced by running the notebooks in the `notebooks
 To download and unpack the necessary data files from Zenodo (Record 10245813), run the following script:
 
 ```bash
-python scripts/download_data.py
+pixi run python scripts/download_data.py
 ```
 
 *Note: Some pre-processed intermediate data files may be required to run specific notebooks without re-calculating the entire model chain.*
