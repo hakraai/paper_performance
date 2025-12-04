@@ -62,7 +62,7 @@ The primary results can be reproduced by running the notebooks in the `notebooks
 
 ## Data Availability
 
-To download and unpack the necessary data files from Zenodo (Record 10245813), run the following script:
+To download and unpack the necessary data files from Zenodo (Record 17816284), run the following script:
 
 ```bash
 pixi run python scripts/download_data.py

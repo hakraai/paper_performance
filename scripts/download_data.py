@@ -3,7 +3,7 @@ from pathlib import Path
 from zipfile import ZipFile
 from tqdm import tqdm
 
-ZENODO_RECORD_ID = "10245813"
+ZENODO_RECORD_ID = "17816284"
 API_URL = f"https://zenodo.org/api/records/{ZENODO_RECORD_ID}"
 DATA_DIR = Path(__file__).parent.parent / "data"
 
