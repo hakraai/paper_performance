@@ -6,3 +6,4 @@ data/
 .pixi
 .vscode/
 **/__pycache__/
+.env
