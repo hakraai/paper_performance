@@ -378,6 +378,7 @@ def generate_testsuite_etf(
         covariate["datetime"].data[0],
         covariate["datetime"].data[-1],
     )
+    spatial_support = support.sel(polygon=filterset["polygon"])
 
     # SPATIAL FORECAST: smashed time dimension
     # interpolate the boundaries of the test suite timeframe
@@ -387,7 +388,7 @@ def generate_testsuite_etf(
         covariate_at_epochs,
         measure,
         parameters,
-        support=support,
+        support=spatial_support,
         diff_dim="datetime",
         disagg_dims=disagg_dims,
         scale=False,
@@ -403,7 +404,7 @@ def generate_testsuite_etf(
         measure,
         parameters,
         target_step=target_step,
-        support=support,
+        support=spatial_support,
         disagg_dims=disagg_dims,
         variance=variance,
         fractiles=fractiles,
@@ -424,7 +425,7 @@ def generate_testsuite_etf(
     testsuite["spatial/observation"] = observation_spatial
     testsuite["temporal/observation"] = observation_temporal
     testsuite["meta/time_range"] = covariate_time["datetime"]
-    testsuite["meta/support"] = support
+    testsuite["meta/support"] = spatial_support
     testsuite["meta/measure"] = measure
 
     if spatiotemporal:
@@ -433,7 +434,7 @@ def generate_testsuite_etf(
             covariate_time,
             measure,
             parameters,
-            support=support,
+            support=spatial_support,
             diff_dim="datetime",
             disagg_dims=disagg_dims,
         )

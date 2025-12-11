@@ -1,21 +1,14 @@
 import arviz as az
 import xarray as xr
-from pathlib import Path
 import matplotlib.pyplot as plt
 import model_chain_inference as mci
 
 
 def prepare_testsuite(
-    id,
     idata,
-    run_id,
-    purpose,
-    grid_data_flat,
+    grid_data,
     event_data,
     filterset,
-    model_specs,
-    model_specs_derived,
-    path: Path,
     rng=None,
     n_posterior_samples=None,
 ):
@@ -23,8 +16,6 @@ def prepare_testsuite(
         rng = 42
     if n_posterior_samples is None:
         n_posterior_samples = 1_000
-    if path is None:
-        path = Path(".")
 
     posterior_samples = az.extract(idata, num_samples=n_posterior_samples, rng=rng)
     constant_data = idata["constant_data"].squeeze(drop=True)
@@ -45,40 +36,21 @@ def prepare_testsuite(
             constant_data,
         ],
     )
-    if id in model_specs:
-        data_id = model_specs[id]["data_id"]
-    else:
-        model_id = model_specs_derived[id]["model_id"]
-        data_id = model_specs[model_id]["data_id"]
 
-    dataset = xr.open_dataset(
-        path / f"inference_data-{run_id}-{data_id}.h5",
-        decode_coords="all",
-        decode_timedelta=False,
-    )
-    cov_id = dataset.attrs["covariate_id"]
-    meas_id = dataset.attrs["measure_id"]
-    dsm_mode = dataset.attrs["dsm_mode"]
-    if not dsm_mode == "local":
-        return None
-
-    select = model_specs[id].get("sel", {})
-    select["purpose"] = purpose
-    # if "bernstein_index" in parameters:
-    #     select["bernstein_degree"] = parameters["bernstein_index"].size - 1
-    data = grid_data_flat.sel(select)
+    cov_id = idata.attrs["covariate_id"]
+    meas_id = idata.attrs["measure_id"]
+    supp_id = idata.attrs["support_id"]
 
     testsuite = mci.generate_testsuite_etf(
         event_data,
         parameters,
-        data[cov_id] / covariate_scale,
-        data[meas_id],
-        data["support_fraction"],
-        filterset=filterset.sel(purpose=purpose),
+        grid_data[cov_id] / covariate_scale,
+        grid_data[meas_id],
+        grid_data[supp_id],
+        filterset=filterset,
         variance=True,  # only for temporal
-        dsm_mode=dsm_mode,
     )
-    testsuite.attrs.update(dataset.attrs)
+    testsuite.attrs.update(idata.attrs)
 
     return testsuite
 

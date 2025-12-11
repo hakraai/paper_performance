@@ -114,6 +114,7 @@ def get_grid(path):
         header=0,
         names=["x", "y", "compressibility"],
     ).set_index(["x", "y"])
+    comp2018_pd = comp2018_pd[comp2018_pd["compressibility"] > 0.0]
 
     thick_pd = pd.read_csv(
         path / thickness_file,
@@ -125,7 +126,7 @@ def get_grid(path):
     comp2021_pd = pd.read_csv(
         path / comp2021_file,
         header=0,
-        names=["x", "y", "compressibility"],
+        names=["x", "y", "compaction_coefficient"],
     ).set_index(["x", "y"])
 
     comp2018_xr = xr.Dataset(comp2018_pd).unstack()
@@ -133,21 +134,10 @@ def get_grid(path):
 
     comp2021_xr = xr.Dataset(comp2021_pd).unstack().interp_like(comp2018_xr)
 
-    comp_xr = (
-        xr.Dataset(
-            {
-                "cm_NAM2018": comp2018_xr["compressibility"],
-                "cm_NAM2021": comp2021_xr["compressibility"],
-            }
-        )
-        .to_array("cm_grid_version")
-        .rename("compressibility")
-    )
-
     thick_xr = xr.Dataset(thick_pd).unstack()
 
     covdat = xr.merge(
-        [pressure_xr, comp_xr, thick_xr],
+        [pressure_xr, comp2018_xr, comp2021_xr, thick_xr],
         combine_attrs="drop",
         join="outer",
     )
@@ -187,7 +177,8 @@ def get_grid(path):
     covdat["pressure"].attrs["units"] = "MPa"
     covdat["horizontal_stress_RTiCM"].attrs["units"] = "MPa"
     covdat["reservoir_thickness"].attrs["units"] = "m"
-    covdat["compressibility"].attrs["units"] = "MPa^-1"
+    covdat["compressibility"].attrs["units"] = "1/MPa"
+    covdat["compaction_coefficient"].attrs["units"] = "1/MPa"
     covdat["measure_xy"].attrs["units"] = "m^2"
     covdat["measure_t"].attrs["units"] = "days"
     covdat["measure_xyt"].attrs["units"] = "m^2 days"
