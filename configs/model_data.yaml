@@ -1,0 +1,19 @@
+experiment: groningen_1995_2025
+source_data_root: data/resources
+perspectives:
+  - prospective
+  - retrospective
+outdir: data/generated_model_data
+data_scenarios_file: data/resources/data_scenarios-groningen_1995_2025.yaml
+polygon: GroningenFieldGWC
+mmin: 1.45
+target_step: 0.02
+attribute_step: 25.0
+etas_d: 4000000.0
+etas_q: 3.16
+workers: 1
+scenarios:
+  - ETS_bs
+  - ETS_rmax
+  - EVTS_bs
+  - EVTS_rmax

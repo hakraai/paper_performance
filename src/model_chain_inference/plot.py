@@ -240,8 +240,8 @@ def plot_time_series(
     if legend:
         ax.legend(loc=legend_loc)
     ax.set_title(title)
-    ax.set_xlabel("time [year]")
-    ax.set_ylabel("annual event count")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Annual rate/count")
 
 
 def plot_bs_contrib(bs_dict, ax=None, yerr=False):
@@ -301,8 +301,8 @@ def plot_time_forecast(
     if label is None:
         label = [
             "mean annual earthquake rate",
-            "95% CI annual earthquake count",
-            "95% CI annual earthquake rate",
+            "95% PI annual earthquake count",
+            "95% PI annual earthquake rate",
         ]
     if final_date is not None:
         final_date = np.datetime64(final_date)
@@ -320,13 +320,16 @@ def plot_time_forecast(
     count_fractiles = mci.statistics.get_count_fractiles(mean, variance, q)
     dt = count_fractiles["datetime"]
 
-    mean.plot.step(
+    forecast_line = mean.plot.step(
         x="datetime",
         where="post",
         ax=ax,
-        c="dimgrey",
+        c="black",
+        linestyle=(0, (1.0, 1.2)),
+        lw=2.5,
         label=label[0],
     )
+    forecast_line[0].set_dash_capstyle("round")
     if variance is None:
         count_percs = count_fractiles.sel(distribution="poisson")
         ax.fill_between(

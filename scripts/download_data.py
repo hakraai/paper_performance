@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 ZENODO_RECORD_ID = "17816284"
 API_URL = f"https://zenodo.org/api/records/{ZENODO_RECORD_ID}"
-DATA_DIR = Path(__file__).parent.parent / "data"
+RESOURCE_DIR = Path(__file__).parent.parent / "data" / "resources"
 
 
 def download_file(url, dest_path):
@@ -24,7 +24,7 @@ def download_file(url, dest_path):
 
 
 def main():
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    RESOURCE_DIR.mkdir(parents=True, exist_ok=True)
 
     print(f"Fetching metadata for Zenodo record {ZENODO_RECORD_ID}...")
     response = requests.get(API_URL)
@@ -40,7 +40,7 @@ def main():
     for file_info in files:
         file_url = file_info["links"]["self"]
         file_name = file_info["key"]
-        dest_path = DATA_DIR / file_name
+        dest_path = RESOURCE_DIR / file_name
 
         if dest_path.exists():
             print(f"File {file_name} already exists. Skipping download.")
@@ -51,7 +51,7 @@ def main():
         if file_name.endswith(".zip"):
             print(f"Extracting {file_name}...")
             with ZipFile(dest_path, "r") as zip_ref:
-                zip_ref.extractall(DATA_DIR)
+                zip_ref.extractall(RESOURCE_DIR)
             print(f"Extracted {file_name}.")
 
 

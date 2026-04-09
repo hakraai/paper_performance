@@ -7,10 +7,19 @@ channels = ["conda-forge"]
 platforms = ["linux-64"]
 
 [activation]
-env = { PYTHONPATH = "$PIXI_PROJECT_ROOT/src/chaintools:$PIXI_PROJECT_ROOT/src" }
+
+[activation.env]
+PYTHONPATH = "$PIXI_PROJECT_ROOT/src/chaintools:$PIXI_PROJECT_ROOT/src"
+JAX_ENABLE_COMPILATION_CACHE = "1"
+JAX_COMPILATION_CACHE_DIR = "$PIXI_PROJECT_ROOT/.cache/jax_compilation"
 
 [tasks]
-start = "jupyter lab"
+workflow = "python scripts/run_paper_workflow.py --config configs/paper_workflow.yaml --cache reuse"
+workflow-refresh = "python scripts/run_paper_workflow.py --config configs/paper_workflow.yaml --cache refresh"
+workflow-data = "python scripts/run_model_data.py --config configs/model_data.yaml --cache reuse"
+workflow-calibration = "python scripts/run_model_calibration.py --config configs/model_calibration.yaml --cache reuse"
+workflow-assessment = "python scripts/run_performance_assessment.py --config configs/performance_assessment.yaml --cache reuse"
+workflow-figures = "python scripts/run_figure_generation.py --config configs/figure_generation.yaml --cache reuse"
 
 [dependencies]
 python = "==3.11.9"
@@ -22,6 +31,8 @@ scipy = "==1.16.0"
 matplotlib = "==3.10.0"
 arviz = "==0.22.0"
 pandas = "==2.2.3"
+dask = "*"
+distributed = "*"
 ipywidgets = "==8.1.7"
 pytensor = "==2.31.7"
 pymc = "==5.25.1"
@@ -36,4 +47,6 @@ h5netcdf = "==1.4.1"
 blackjax = "==1.2.4"
 jax = "==0.5.2"
 jaxlib = "==0.5.2"
+importlib_resources = "*"
+configargparse = "*"
 nutpie = "==0.14.3"

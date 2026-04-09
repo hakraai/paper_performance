@@ -1,0 +1,19 @@
+experiment: groningen_1995_2025
+source_data_root: data/resources
+data_root: data/generated_model_data
+outdir: data/generated_calibrations
+model_specs_file: data/resources/model_specs-groningen_1995_2025.yaml
+perspectives:
+  - prospective
+  - retrospective
+models:
+  - ETS_bs4_etasKac
+  - ETS_rmax_etasKac
+  - EVTS_bs4_etasKac
+  - EVTS_rmax_etasKac
+draws: 1000
+chains: 8
+cores: 8
+seed: 1234
+target_accept: 0.9
+show_sampling_progress: true

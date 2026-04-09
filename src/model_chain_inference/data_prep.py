@@ -3,6 +3,17 @@ import chaintools.tools_grid as tgrid
 from .model_core import etas_spatial
 from .catalogue import filter_catalogues
 
+
+def _serialize_attr_value(value):
+    if hasattr(value, "tolist"):
+        return value.tolist()
+    if hasattr(value, "item"):
+        try:
+            return value.item()
+        except ValueError:
+            return value
+    return value
+
 def generate_inference_data_local(
     event_data,
     grid_data,
@@ -62,7 +73,7 @@ def generate_inference_data_local(
     # select grid cells where measure is nonzero
     any_dims = [d for d in measure_grid.dims if d not in [grid_index]]
     available = (support_measure_grid > 0).any(any_dims)
-    grid_samples = grid_data.sel({grid_index: available})
+    grid_samples = grid_data.where(available, drop=True)
 
     covariate_samples = grid_samples[covariate_id].load().fillna(0)
     attribute_samples = grid_samples[attribute_ids].load().fillna(0)
@@ -224,15 +235,18 @@ def generate_inference_data_local(
         for attr_id in attribute_ids:
             ds[attr_id + "_exposed"] = ds[attr_id]
 
+    ds.attrs.update(
+        {key: _serialize_attr_value(value) for key, value in measure_exposed.attrs.items()}
+    )
     ds.attrs["covariate_id"] = covariate_id
     ds.attrs["measure_id"] = measure_id
     ds.attrs["support_id"] = support_id
-    ds.attrs["polygon"] = filterset["polygon"].values.item()
-    ds.attrs["timeframe"] = filterset["timeframe"].values.tolist()
-    ds.attrs["mmin"] = filterset["mmin"].values.item()
-    ds.attrs["polygon_etas"] = filterset_etas["polygon"].values.item()
-    ds.attrs["timeframe_etas"] = filterset_etas["timeframe"].values.tolist()
-    ds.attrs["mmin_etas"] = filterset_etas["mmin"].values.item()
+    ds.attrs["polygon"] = _serialize_attr_value(filterset["polygon"].values[()])
+    ds.attrs["timeframe"] = _serialize_attr_value(filterset["timeframe"].values)
+    ds.attrs["mmin"] = _serialize_attr_value(filterset["mmin"].values[()])
+    ds.attrs["polygon_etas"] = _serialize_attr_value(filterset_etas["polygon"].values[()])
+    ds.attrs["timeframe_etas"] = _serialize_attr_value(filterset_etas["timeframe"].values)
+    ds.attrs["mmin_etas"] = _serialize_attr_value(filterset_etas["mmin"].values[()])
     ds.attrs["dsm_mode"] = "local"
 
     return ds
