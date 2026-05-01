@@ -1,0 +1,44 @@
+dsm:
+  default:
+    interpolation_dims:
+      - rmax
+      - sigma
+      - hs_exp
+      - hs_exp_alt
+      - M_plastic
+
+rate:
+  default:
+    mixing_dims:
+      - bernstein_index
+    theta0:
+      dist: Normal
+      mu: -17.0
+      sigma: 5.0
+    theta1:
+      dist: Exponential
+      scale: 5.0
+      dims:
+        - bernstein_index
+
+etas:
+  default:
+  Kac:
+    interpolation_dims:
+      - etas_d
+      - etas_q
+    etas_c:
+      dist: LogNormal
+      mu: 0.0
+      sigma: 1.0
+    etas_p: 1.35
+    etas_K:
+      dist: Exponential
+      scale: 0.1
+    etas_a:
+      dist: Uniform
+      lower: 0.0
+      upper: 2.0
+
+size:
+  default:

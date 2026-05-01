@@ -1,16 +1,18 @@
-.PHONY: help install download workflow workflow-refresh data calibration assessment figures
+.PHONY: help install download download-artifacts source-data model-data calibration assessment figures workflow workflow-refresh
 
 help:
 	@printf '%s\n' \
 	  'Available targets:' \
 	  '  make install                 Install/update the pixi environment' \
 	  '  make download                Download and unpack the required source data' \
-	  '  make workflow                Run the paper workflow (reuse existing outputs when available)' \
-	  '  make workflow-refresh        Recompute the full workflow from source inputs and overwrite outputs' \
-	  '  make data                    Run cached model-data generation' \
+	  '  make download-artifacts      Optionally download and extract a published generated-artifact cache' \
+	  '  make source-data             Build prepared source-data artifacts from raw resources' \
+	  '  make model-data              Run cached model-data generation' \
 	  '  make calibration             Run cached model calibration' \
 	  '  make assessment              Run cached performance assessment artifact generation' \
-	  '  make figures                 Generate publication figures from cached assessment artifacts'
+	  '  make figures                 Generate publication figures from cached assessment artifacts' \
+	  '  make workflow                Run the paper workflow (reuse existing outputs when available)' \
+	  '  make workflow-refresh        Recompute the full workflow from source inputs and overwrite outputs'
 
 install:
 	pixi install
@@ -18,14 +20,14 @@ install:
 download:
 	pixi run python scripts/download_data.py
 
-workflow:
-	pixi run workflow
+download-artifacts:
+	pixi run download-artifacts
 
-workflow-refresh:
-	pixi run workflow-refresh
+source-data:
+	pixi run workflow-source-data
 
-data:
-	pixi run workflow-data
+model-data:
+	pixi run workflow-model-data
 
 calibration:
 	pixi run workflow-calibration
@@ -35,3 +37,9 @@ assessment:
 
 figures:
 	pixi run workflow-figures
+
+workflow:
+	pixi run workflow
+
+workflow-refresh:
+	pixi run workflow-refresh

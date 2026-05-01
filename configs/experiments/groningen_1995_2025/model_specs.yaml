@@ -1,0 +1,22 @@
+ETS_bs4_etasKac:
+  data_id: ETS_bs
+  etas_model_id: Kac
+  sel:
+    bernstein_degree: 4
+    thickness_origin: grid
+ETS_rmax_etasKac:
+  data_id: ETS_rmax
+  etas_model_id: Kac
+  sel:
+    thickness_origin: grid
+EVTS_bs4_etasKac:
+  data_id: EVTS_bs
+  etas_model_id: Kac
+  sel:
+    bernstein_degree: 4
+    thickness_origin: grid
+EVTS_rmax_etasKac:
+  data_id: EVTS_rmax
+  etas_model_id: Kac
+  sel:
+    thickness_origin: grid

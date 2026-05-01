@@ -9,6 +9,7 @@ import time
 
 import numpy as np
 import pymc as pm
+import xarray as xr
 import yaml
 from pymc.model.transform.optimization import freeze_dims_and_data
 
@@ -22,8 +23,8 @@ for path in [SRC_ROOT, CHAINTOOLS_ROOT]:
         sys.path.insert(0, path_str)
 
 import model_chain_inference as mci  # noqa: E402
-from workflow_support.calibration import get_inference_data, get_settings  # noqa: E402
 from workflow_support.logging import configure_logging, get_logger  # noqa: E402
+from workflow_support.paths import default_model_specs_path, default_source_data_root  # noqa: E402
 
 
 LOGGER = get_logger(__name__)
@@ -34,6 +35,42 @@ def log_multiline_info(prefix: str, text: str) -> None:
         stripped = line.strip()
         if stripped:
             LOGGER.info("%s | %s", prefix, stripped)
+
+
+def load_inference_data(path: Path, experiment: str, perspective: str, model: str) -> xr.Dataset:
+    ids = xr.open_dataset(
+        path / f"model_data-{experiment}-{perspective}-{model}.h5",
+        decode_timedelta=False,
+        engine="h5netcdf",
+    )
+    if "bernstein_basis" in ids.dims:
+        ids = ids.set_xindex(["bernstein_degree", "bernstein_index"])
+    return ids
+
+
+def load_calibration_settings(config: dict[str, object], repo_root: Path) -> dict[str, dict[str, object] | None]:
+    settings_path = resolve_path(repo_root, config.get("settings_file"))
+    if settings_path is None:
+        settings_path = repo_root / "configs" / "model_calibration_settings.yaml"
+    settings = yaml.safe_load(settings_path.read_text()) or {}
+    return {
+        "dsm": settings.get("dsm", {}),
+        "rate": settings.get("rate", {}),
+        "etas": settings.get("etas", {}),
+        "size": settings.get("size", {}),
+    }
+
+
+def resolve_model_settings(
+    settings_catalog: dict[str, dict[str, object] | None],
+    model_spec: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "rate_parameter_data": settings_catalog["rate"][model_spec.get("rate_model_id", "default")],
+        "size_parameter_data": settings_catalog["size"][model_spec.get("size_model_id", "default")],
+        "dsm_parameter_data": settings_catalog["dsm"][model_spec.get("dsm_model_id", "default")],
+        "etas_parameter_data": settings_catalog["etas"][model_spec.get("etas_model_id", "default")],
+    }
 
 
 def build_validated_model(
@@ -110,7 +147,7 @@ def main() -> None:
     repo_root = resolve_path(REPO_ROOT, config.get("repo_root")) or REPO_ROOT
     source_data_root = resolve_path(repo_root, config.get("source_data_root"))
     if source_data_root is None:
-        source_data_root = repo_root / "data" / "resources"
+        source_data_root = default_source_data_root(repo_root)
     experiment = config.get("experiment", "groningen_1995_2025")
     data_root = resolve_path(repo_root, config.get("data_root"))
     if data_root is None:
@@ -129,11 +166,11 @@ def main() -> None:
 
     specs_path = resolve_path(repo_root, config.get("model_specs_file"))
     if specs_path is None:
-        specs_path = source_data_root / f"model_specs-{experiment}.yaml"
+        specs_path = default_model_specs_path(repo_root, experiment)
     model_specs = yaml.safe_load(specs_path.read_text())
     models = config.get("models", list(model_specs.keys()))
 
-    settings_dsm, settings_rate, settings_etas, settings_size = get_settings()
+    settings_catalog = load_calibration_settings(config, repo_root)
     outdir.mkdir(parents=True, exist_ok=True)
 
     LOGGER.info(
@@ -177,14 +214,9 @@ def main() -> None:
 
             model_spec = model_specs[model_name]
             data_id = model_spec["data_id"]
-            settings_local = {
-                "rate_parameter_data": settings_rate[model_spec.get("rate_model_id", "default")],
-                "size_parameter_data": settings_size[model_spec.get("size_model_id", "default")],
-                "dsm_parameter_data": settings_dsm[model_spec.get("dsm_model_id", "default")],
-                "etas_parameter_data": settings_etas[model_spec.get("etas_model_id", "default")],
-            }
+            settings_local = resolve_model_settings(settings_catalog, model_spec)
 
-            ids = get_inference_data(data_root, experiment, perspective, data_id)
+            ids = load_inference_data(data_root, experiment, perspective, data_id)
             ids = ids.sel(model_spec.get("sel", {})).isel(model_spec.get("isel", {}))
             LOGGER.info(
                 "stage=calibration perspective=%s model=%s status=build data_id=%s",

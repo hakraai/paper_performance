@@ -1,0 +1,12 @@
+ETS_bs:
+  covariate_id: stress_linear_bs_smooth
+  measure_id: fault_area_bs_smooth
+ETS_rmax:
+  covariate_id: stress_linear_rmax_smooth
+  measure_id: fault_area_rmax_smooth
+EVTS_bs:
+  covariate_id: stress_RTiCM_bs_smooth
+  measure_id: fault_area_bs_smooth
+EVTS_rmax:
+  covariate_id: stress_RTiCM_rmax_smooth
+  measure_id: fault_area_rmax_smooth

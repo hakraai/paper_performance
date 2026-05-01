@@ -1,10 +1,10 @@
 experiment: groningen_1995_2025
-source_data_root: data/resources
+source_data_root: data/generated_source_data
 perspectives:
   - prospective
   - retrospective
 outdir: data/generated_model_data
-data_scenarios_file: data/resources/data_scenarios-groningen_1995_2025.yaml
+data_scenarios_file: configs/experiments/groningen_1995_2025/data_scenarios.yaml
 polygon: GroningenFieldGWC
 mmin: 1.45
 target_step: 0.02

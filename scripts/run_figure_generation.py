@@ -34,6 +34,7 @@ from run_performance_assessment import (
     resolve_path,
 )
 from workflow_support.logging import configure_logging, get_logger
+from workflow_support.paths import default_model_specs_path, default_source_data_root
 
 
 LOGGER = get_logger(__name__)
@@ -126,12 +127,13 @@ def main() -> None:
     cache_mode = get_cache_mode(args)
 
     repo_root = resolve_path(REPO_ROOT, config.get("repo_root")) or REPO_ROOT
-    source_data_root = resolve_path(repo_root, config.get("source_data_root")) or (repo_root / "data" / "resources")
+    source_data_root = resolve_path(repo_root, config.get("source_data_root")) or default_source_data_root(repo_root)
     calibration_root = resolve_path(repo_root, config.get("calibration_root")) or (repo_root / "data" / "generated_calibrations")
     artifact_dir = resolve_path(repo_root, config.get("artifact_dir")) or (repo_root / "data" / "generated_assessment")
     figure_dir = resolve_path(repo_root, config.get("figure_dir")) or (repo_root / "figures" / "generated_paper")
     experiment = config.get("experiment", "groningen_1995_2025")
-    model_specs = yaml.safe_load((source_data_root / f"model_specs-{experiment}.yaml").read_text())
+    model_specs_file = resolve_path(repo_root, config.get("model_specs_file")) or default_model_specs_path(repo_root, experiment)
+    model_specs = yaml.safe_load(model_specs_file.read_text())
     perspectives = config.get("perspectives", ["prospective", "retrospective"])
     model_names = config.get("model_names", DEFAULT_MODEL_NAMES)
     model_ids = config.get("models", list(model_names.keys()))

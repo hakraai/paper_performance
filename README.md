@@ -61,7 +61,31 @@ or
 pixi run python scripts/download_data.py
 ```
 
-The download helper retrieves the published workflow inputs from Zenodo record `17816284` and extracts any bundled archives into `data/resources/`.
+The download helper retrieves the published upstream source datasets from Zenodo record `17816284` into `data/resources/`. The current record contains:
+
+- `Cm_grids_rotliechend.csv`
+- `Faultdata_NAM_reformatted_cleaned_selected.sqlite3`
+- `Groningen_field_outline.csv`
+- `ReservoirModel_compressibility_20180122.csv`
+- `ReservoirModel_thickness_20171013.csv`
+- `XY_PRF_ROTL_GY_V2a_2023.csv`
+- `rticm_stress.h5`
+
+These downloads are not the same as the prepared runtime inputs consumed by the supported workflow runners.
+
+If you want to reuse a published generated-artifact cache instead of rebuilding every stage locally, you can optionally download that cache bundle after filling in `artifact_archive_url` in `configs/generated_artifacts_download.yaml`:
+
+```bash
+make download-artifacts
+```
+
+or
+
+```bash
+pixi run download-artifacts
+```
+
+The generated-artifact download is optional. If you skip it, the supported workflow can still build the cache locally from the raw resources.
 
 ## Workflow
 
@@ -77,7 +101,7 @@ or
 pixi run workflow
 ```
 
-This runs the full pipeline in cache-reuse mode across data generation, model calibration, performance assessment, and figure generation. Existing outputs are reused when present, so the command acts as the normal production workflow for day-to-day work on the repository.
+This runs the full pipeline in cache-reuse mode across source-data generation, model-data generation, model calibration, performance assessment, and figure generation. Existing outputs are reused when present, so the command acts as the normal production workflow for day-to-day work on the repository.
 
 Force a full recomputation of all supported workflow outputs from the configured source inputs with:
 
@@ -91,21 +115,73 @@ or
 pixi run workflow-refresh
 ```
 
-The individual workflow stages are also available through `make data`, `make calibration`, `make assessment`, and `make figures`.
+This runs the same pipeline but refreshes any existing outputs instead of reusing them.
+
+The individual workflow stages are also available through `make source-data`, `make model-data`, `make calibration`, `make assessment`, and `make figures`.
 
 ## Data and Artifacts
 
-The supported workflow expects external inputs under `data/resources/`, including at least:
+The repository now distinguishes between raw upstream inputs and prepared runtime inputs:
 
-- `data/resources/event_data.h5`
-- `data/resources/fault_data.h5`
-- `data/resources/grid_data.h5`
-- `data/resources/groningen_polygons.shp`
-- `data/resources/model_specs-*.yaml`
-- `data/resources/data_scenarios-*.yaml`
+- raw upstream inputs downloaded from Zenodo live under `data/resources/`
+- optional published generated-artifact cache bundles are downloaded and extracted into the same generated output paths used by the workflow
+- prepared runtime source data generated from those inputs live under `data/generated_source_data/`
+- archived legacy prepared artifacts kept for parity checking live under `data/obsolete/legacy_source_data_reference/`
+- active experiment YAMLs live under `configs/experiments/groningen_1995_2025/`
+
+The supported workflow starts from the prepared source-data set under `data/generated_source_data/`, specifically:
+
+- `data/generated_source_data/event_data.h5`
+- `data/generated_source_data/fault_data.h5`
+- `data/generated_source_data/grid_data.h5`
+- `data/generated_source_data/groningen_polygons.{shp,shx,dbf,prj,cpg}`
+- `configs/experiments/groningen_1995_2025/model_specs.yaml`
+- `configs/experiments/groningen_1995_2025/data_scenarios.yaml`
+
+Build that prepared source-data set with:
+
+```bash
+make source-data
+```
+
+or
+
+```bash
+pixi run workflow-source-data
+```
+
+The source-data stage reads the raw Zenodo bundle directly and writes the prepared runtime inputs into `data/generated_source_data/`.
+
+The optional generated-artifact archive is expected to unpack directly into the repository cache layout, specifically:
+
+- `data/generated_source_data/`
+- `data/generated_model_data/`
+- `data/generated_calibrations/`
+- `data/generated_assessment/`
+- `figures/generated_paper/`
+
+Legacy migration and parity-check helpers are kept under `forensics/` and are not part of the normal workflow surface.
+
+Run the model-data stage with:
+
+```bash
+make model-data
+```
+
+or
+
+```bash
+pixi run workflow-model-data
+```
+
+Additional files currently present under `data/resources/` are not all on the active supported path:
+
+- `model_specs-perf_1995_2025.yaml`, `model_specs-performance_1995_2025.yaml`, `data_scenarios-perf_1995_2025.yaml`, and `data_scenarios-performance_1995_2025.yaml` are legacy alternate config variants that are not referenced by the active configs.
+- `grid_data_flat.h5` is not referenced by the active workflow.
 
 Generated artifacts are organized as follows:
 
+- prepared source data: `data/generated_source_data/`
 - model-data artifacts: `data/generated_model_data/`
 - calibration artifacts: `data/generated_calibrations/`
 - performance-assessment artifacts: `data/generated_assessment/`
@@ -117,6 +193,7 @@ The main workflow configuration files are:
 
 - `configs/model_data.yaml`
 - `configs/model_calibration.yaml`
+- `configs/model_calibration_settings.yaml`
 - `configs/performance_assessment.yaml`
 - `configs/figure_generation.yaml`
 - `configs/paper_workflow.yaml`

@@ -23,6 +23,7 @@ from workflow_support.model_data import (  # noqa: E402
     load_inputs,
     load_scenarios,
 )
+from workflow_support.paths import default_data_scenarios_path, default_source_data_root  # noqa: E402
 
 
 CURRENT_SCENARIOS = ["ETS_rmax", "EVTS_rmax", "ETS_bs", "EVTS_bs"]
@@ -117,19 +118,19 @@ def main() -> None:
     cache_mode = get_cache_mode(args)
 
     repo_root = resolve_path(REPO_ROOT, config.get("repo_root")) or REPO_ROOT
+    experiment = config.get("experiment", "groningen_1995_2025")
     source_data_root = resolve_path(repo_root, config.get("source_data_root"))
     if source_data_root is None:
-        source_data_root = repo_root / "data" / "resources"
+        source_data_root = default_source_data_root(repo_root)
     outdir = resolve_path(repo_root, config.get("outdir"))
     if outdir is None:
         outdir = repo_root / "data" / "generated_model_data"
 
     scenarios_file = resolve_path(repo_root, config.get("data_scenarios_file"))
     if scenarios_file is None:
-        scenarios_file = source_data_root / f"data_scenarios-{config.get('experiment', 'groningen_1995_2025')}.yaml"
+        scenarios_file = default_data_scenarios_path(repo_root, experiment)
 
     perspectives = config.get("perspectives", ["prospective", "retrospective"])
-    experiment = config.get("experiment", "groningen_1995_2025")
     polygon = config.get("polygon", "GroningenFieldGWC")
     mmin = float(config.get("mmin", 1.45))
     target_step = float(config.get("target_step", 0.02))

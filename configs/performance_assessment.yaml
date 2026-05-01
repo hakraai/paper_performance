@@ -1,5 +1,6 @@
 experiment: groningen_1995_2025
-source_data_root: data/resources
+source_data_root: data/generated_source_data
+model_specs_file: configs/experiments/groningen_1995_2025/model_specs.yaml
 calibration_root: data/generated_calibrations
 artifact_dir: data/generated_assessment
 perspectives:

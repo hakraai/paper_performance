@@ -28,7 +28,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--steps",
         nargs="+",
-        choices=["data", "calibration", "assessment", "figures", "all"],
+        choices=["source-data", "model-data", "calibration", "assessment", "figures", "all"],
         default=["all"],
         help="Workflow stages to run.",
     )
@@ -71,10 +71,12 @@ def main() -> None:
     config = yaml.safe_load(args.config.read_text())
     steps = set(args.steps)
     if "all" in steps:
-        steps = {"data", "calibration", "assessment", "figures"}
-    ordered_steps = [step for step in ["data", "calibration", "assessment", "figures"] if step in steps]
+        steps = {"source-data", "model-data", "calibration", "assessment", "figures"}
+    ordered_steps = [step for step in ["source-data", "model-data", "calibration", "assessment", "figures"] if step in steps]
     for step in ordered_steps:
-        if step == "data":
+        if step == "source-data":
+            run_step("run_source_data.py", resolve_config_path(config["source_data_config"], REPO_ROOT), args.force, args.cache)
+        elif step == "model-data":
             run_step("run_model_data.py", resolve_config_path(config["model_data_config"], REPO_ROOT), args.force, args.cache)
         elif step == "calibration":
             run_step("run_model_calibration.py", resolve_config_path(config["calibration_config"], REPO_ROOT), args.force, args.cache)

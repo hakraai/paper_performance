@@ -1,8 +1,9 @@
 experiment: groningen_1995_2025
-source_data_root: data/resources
+source_data_root: data/generated_source_data
 data_root: data/generated_model_data
 outdir: data/generated_calibrations
-model_specs_file: data/resources/model_specs-groningen_1995_2025.yaml
+model_specs_file: configs/experiments/groningen_1995_2025/model_specs.yaml
+settings_file: configs/model_calibration_settings.yaml
 perspectives:
   - prospective
   - retrospective
