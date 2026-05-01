@@ -36,9 +36,15 @@ paper_performance/
 Use [pixi](https://pixi.sh/) to create the project environment.
 
 ```bash
-git clone https://github.com/hakraai/paper_performance.git
+git clone --recurse-submodules https://github.com/hakraai/paper_performance.git
 cd paper_performance
 pixi install
+```
+
+If you already cloned the repository without submodules, initialize the bundled `chaintools` dependency with:
+
+```bash
+git submodule update --init --recursive
 ```
 
 The activation environment defined in `pixi.toml` sets `PYTHONPATH` for the local source tree and enables a persistent JAX compilation cache under `.cache/jax_compilation`.
@@ -54,6 +60,8 @@ or
 ```bash
 pixi run python scripts/download_data.py
 ```
+
+The download helper retrieves the published workflow inputs from Zenodo record `17816284` and extracts any bundled archives into `data/resources/`.
 
 ## Workflow
 
