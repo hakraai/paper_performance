@@ -70,11 +70,6 @@ def resolve_expected_paths(repo_root: Path, config: dict[str, object]) -> list[P
     return [resolve_path(repo_root, str(value)) or repo_root for value in values]
 
 
-def resolve_required_local_paths(repo_root: Path, config: dict[str, object]) -> list[Path]:
-    values = config.get("required_local_paths", ["data/generated_source_data"])
-    return [resolve_path(repo_root, str(value)) or repo_root for value in values]
-
-
 def validate_cache_state(expected_paths: list[Path], cache_mode: str) -> bool:
     existing = [path for path in expected_paths if path.exists()]
     if len(existing) == len(expected_paths) and cache_mode == "reuse":
@@ -157,7 +152,6 @@ def main() -> None:
     extract_root = resolve_path(repo_root, archive_config.get("extract_root")) or repo_root
     download_dir = resolve_path(repo_root, archive_config.get("download_dir")) or (repo_root / "data" / "release" / "downloads")
     expected_paths = resolve_expected_paths(repo_root, archive_config)
-    required_local_paths = resolve_required_local_paths(repo_root, archive_config)
     resolved_archive_name, resolved_artifact_url = resolve_archive(args.archive_key, args.config)
     artifact_url = args.url or resolved_artifact_url
 
@@ -168,11 +162,10 @@ def main() -> None:
         )
 
     LOGGER.info(
-        "stage=download-artifacts configured cache=%s extract_root=%s download_dir=%s required_local_paths=%s",
+        "stage=download-artifacts configured cache=%s extract_root=%s download_dir=%s",
         cache_mode,
         extract_root,
         download_dir,
-        [str(path) for path in required_local_paths],
     )
 
     if not validate_cache_state(expected_paths, cache_mode):
@@ -197,13 +190,6 @@ def main() -> None:
         raise FileNotFoundError(
             "Artifact archive extraction completed, but expected cache paths were not created: "
             + ", ".join(str(path) for path in missing)
-        )
-
-    missing_local = [path for path in required_local_paths if not path.exists()]
-    if missing_local:
-        LOGGER.warning(
-            "stage=download-artifacts status=local-prerequisites-missing missing_paths=%s note=published artifact cache excludes source-data; run make source-data before assessment or figure regeneration",
-            [str(path) for path in missing_local],
         )
 
     LOGGER.info("stage=download-artifacts status=done expected_paths=%s", [str(path) for path in expected_paths])

@@ -80,6 +80,15 @@ def get_model_data_path(outdir: Path, experiment: str, perspective: str, scenari
     return outdir / f"model_data-{experiment}-{perspective}-{scenario_name}.h5"
 
 
+def validate_scenario_names(scenario_names: list[str], scenarios: dict[str, object], scenarios_file: Path) -> None:
+    missing = [name for name in scenario_names if name not in scenarios]
+    if missing:
+        raise ValueError(
+            f"Undefined scenarios in {scenarios_file}: {missing}. "
+            f"Available scenarios: {sorted(scenarios.keys())}"
+        )
+
+
 def build_and_write_scenario_dataset(
     output_path: Path,
     data_dir: Path,
@@ -94,6 +103,7 @@ def build_and_write_scenario_dataset(
     attribute_step: float,
 ) -> str:
     scenarios = load_scenarios(scenarios_file)
+    validate_scenario_names([scenario_name], scenarios, scenarios_file)
     event_data, grid_data = load_inputs(data_dir)
     filterset = build_filterset(perspective, polygon, mmin)
     dataset = generate_calibration_dataset(
@@ -114,7 +124,7 @@ def build_and_write_scenario_dataset(
 def main() -> None:
     args = parse_args()
     configure_logging()
-    config = yaml.safe_load(args.config.read_text())
+    config = yaml.safe_load(args.config.read_text()) or {}
     cache_mode = get_cache_mode(args)
 
     repo_root = resolve_path(REPO_ROOT, config.get("repo_root")) or REPO_ROOT
@@ -140,8 +150,9 @@ def main() -> None:
     scenario_names = config.get("scenarios", CURRENT_SCENARIOS)
     workers = max(1, int(config.get("workers", 1)))
 
-    event_data, grid_data = load_inputs(source_data_root)
     scenarios = load_scenarios(scenarios_file)
+    validate_scenario_names(list(scenario_names), scenarios, scenarios_file)
+    event_data, grid_data = load_inputs(source_data_root)
 
     LOGGER.info(
         "stage=model_data configured experiment=%s perspectives=%s scenarios=%s workers=%s cache=%s source_data_root=%s outdir=%s",

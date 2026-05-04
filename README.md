@@ -87,6 +87,14 @@ pixi run download-artifacts
 
 The generated-artifact download is optional. If you skip it, the supported workflow can still build the downstream caches locally from the raw resources.
 
+If you want the downloaded downstream cache to be immediately usable for the later workflow stages, run:
+
+```bash
+make prepare-artifacts
+```
+
+This downloads the raw-resource bundle, builds `data/generated_source_data/`, and then downloads the downstream cache archive.
+
 Prepared source-data is not part of the published cache archive. Always generate `data/generated_source_data/` locally from the raw Zenodo bundle before running the downstream stages. The current source-data stage writes about 72 GB under `data/generated_source_data/`, so reserve at least 80 GB of free disk space before running `make source-data`.
 
 ## Workflow
@@ -166,9 +174,7 @@ The optional generated-artifact archive is expected to unpack directly into the 
 A release consumer who wants to recreate figures from the published downstream caches should use this sequence:
 
 ```bash
-make download-resources
-make source-data
-make download-artifacts
+make prepare-artifacts
 pixi run python scripts/run_figure_generation.py --config configs/figure_generation.yaml --cache refresh
 ```
 

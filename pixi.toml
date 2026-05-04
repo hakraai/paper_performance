@@ -14,7 +14,7 @@ JAX_ENABLE_COMPILATION_CACHE = "1"
 JAX_COMPILATION_CACHE_DIR = "$PIXI_PROJECT_ROOT/.cache/jax_compilation"
 
 [tasks]
-download-resources = "python scripts/download_data.py --archive-key resources"
+download-resources = "python scripts/download_data.py --archive-key resources --cache reuse"
 download-artifacts = "python scripts/download_generated_artifacts.py --archive-key generated_artifacts --cache reuse"
 package-resources = "python scripts/package_generated_artifacts.py --archive-key resources --cache reuse"
 package-artifacts = "python scripts/package_generated_artifacts.py --archive-key generated_artifacts --cache reuse"

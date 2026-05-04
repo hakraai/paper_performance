@@ -13,6 +13,13 @@ from workflow_support.logging import configure_logging, get_logger
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LOGGER = get_logger(__name__)
+REQUIRED_STEP_CONFIG_KEYS = {
+    "source-data": "source_data_config",
+    "model-data": "model_data_config",
+    "calibration": "calibration_config",
+    "assessment": "performance_assessment_config",
+    "figures": "figure_generation_config",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -68,11 +75,16 @@ def run_step(script_name: str, config_path: Path, force: bool, cache_mode: str) 
 def main() -> None:
     args = parse_args()
     configure_logging()
-    config = yaml.safe_load(args.config.read_text())
+    config = yaml.safe_load(args.config.read_text()) or {}
     steps = set(args.steps)
     if "all" in steps:
         steps = {"source-data", "model-data", "calibration", "assessment", "figures"}
     ordered_steps = [step for step in ["source-data", "model-data", "calibration", "assessment", "figures"] if step in steps]
+
+    missing_keys = [REQUIRED_STEP_CONFIG_KEYS[step] for step in ordered_steps if REQUIRED_STEP_CONFIG_KEYS[step] not in config]
+    if missing_keys:
+        raise KeyError(f"{args.config} is missing required workflow config keys: {missing_keys}")
+
     for step in ordered_steps:
         if step == "source-data":
             run_step("run_source_data.py", resolve_config_path(config["source_data_config"], REPO_ROOT), args.force, args.cache)

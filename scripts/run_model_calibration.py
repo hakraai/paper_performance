@@ -65,11 +65,20 @@ def resolve_model_settings(
     settings_catalog: dict[str, dict[str, object] | None],
     model_spec: dict[str, object],
 ) -> dict[str, object]:
+    def require_setting(section: str, model_id: str) -> object:
+        section_settings = settings_catalog.get(section) or {}
+        if model_id not in section_settings:
+            raise ValueError(
+                f"Calibration settings section '{section}' is missing model id '{model_id}'. "
+                f"Available ids: {sorted(section_settings.keys())}"
+            )
+        return section_settings[model_id]
+
     return {
-        "rate_parameter_data": settings_catalog["rate"][model_spec.get("rate_model_id", "default")],
-        "size_parameter_data": settings_catalog["size"][model_spec.get("size_model_id", "default")],
-        "dsm_parameter_data": settings_catalog["dsm"][model_spec.get("dsm_model_id", "default")],
-        "etas_parameter_data": settings_catalog["etas"][model_spec.get("etas_model_id", "default")],
+        "rate_parameter_data": require_setting("rate", str(model_spec.get("rate_model_id", "default"))),
+        "size_parameter_data": require_setting("size", str(model_spec.get("size_model_id", "default"))),
+        "dsm_parameter_data": require_setting("dsm", str(model_spec.get("dsm_model_id", "default"))),
+        "etas_parameter_data": require_setting("etas", str(model_spec.get("etas_model_id", "default"))),
     }
 
 
@@ -141,7 +150,7 @@ def should_write_output(path: Path, cache_mode: str) -> bool:
 def main() -> None:
     args = parse_args()
     configure_logging()
-    config = yaml.safe_load(args.config.read_text())
+    config = yaml.safe_load(args.config.read_text()) or {}
     cache_mode = get_cache_mode(args)
 
     repo_root = resolve_path(REPO_ROOT, config.get("repo_root")) or REPO_ROOT
@@ -167,8 +176,15 @@ def main() -> None:
     specs_path = resolve_path(repo_root, config.get("model_specs_file"))
     if specs_path is None:
         specs_path = default_model_specs_path(repo_root, experiment)
-    model_specs = yaml.safe_load(specs_path.read_text())
+    model_specs = yaml.safe_load(specs_path.read_text()) or {}
     models = config.get("models", list(model_specs.keys()))
+
+    missing_models = [model_name for model_name in models if model_name not in model_specs]
+    if missing_models:
+        raise ValueError(
+            f"Undefined models in {args.config}: {missing_models}. "
+            f"Available models in {specs_path}: {sorted(model_specs.keys())}"
+        )
 
     settings_catalog = load_calibration_settings(config, repo_root)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -213,6 +229,10 @@ def main() -> None:
                 continue
 
             model_spec = model_specs[model_name]
+            if "data_id" not in model_spec:
+                raise ValueError(
+                    f"Model spec '{model_name}' in {specs_path} is missing required key 'data_id'."
+                )
             data_id = model_spec["data_id"]
             settings_local = resolve_model_settings(settings_catalog, model_spec)
 
