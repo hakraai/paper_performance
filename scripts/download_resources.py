@@ -18,7 +18,7 @@ from workflow_support.zenodo import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = DEFAULT_ZENODO_CONFIG
 DEFAULT_DOWNLOAD_DIR = REPO_ROOT / "data" / "release" / "downloads"
-DEFAULT_EXTRACT_ROOT = REPO_ROOT / "data" / "resources"
+DEFAULT_EXTRACT_ROOT = REPO_ROOT
 
 
 def parse_args() -> argparse.Namespace:

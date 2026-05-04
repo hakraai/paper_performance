@@ -22,7 +22,7 @@ LOGGER = get_logger(__name__)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Package downstream generated workflow artifacts into a Zenodo-ready cache archive."
+        description="Package configured workflow artifacts into a Zenodo-ready archive."
     )
     parser.add_argument(
         "--config",
@@ -79,7 +79,7 @@ def should_write_output(path: Path, cache_mode: str) -> bool:
     )
 
 
-def iter_artifact_files(expected_paths: list[Path]) -> list[Path]:
+def iter_archive_files(expected_paths: list[Path]) -> list[Path]:
     files: list[Path] = []
     missing: list[Path] = []
     for path in expected_paths:
@@ -92,11 +92,11 @@ def iter_artifact_files(expected_paths: list[Path]) -> list[Path]:
         files.extend(sorted(candidate for candidate in path.rglob("*") if candidate.is_file()))
     if missing:
         raise FileNotFoundError(
-            "Cannot package generated artifacts because these expected cache paths are missing: "
+            "Cannot package archive because these expected paths are missing: "
             + ", ".join(str(path) for path in missing)
         )
     if not files:
-        raise FileNotFoundError("No generated artifact files found under the expected cache paths.")
+        raise FileNotFoundError("No archive files found under the expected paths.")
     return files
 
 
@@ -161,7 +161,8 @@ def main() -> None:
     archive_path = output_dir / archive_name
 
     LOGGER.info(
-        "stage=package-artifacts configured cache=%s output_dir=%s archive=%s",
+        "stage=package-archive configured archive_key=%s cache=%s output_dir=%s archive=%s",
+        args.archive_key,
         cache_mode,
         output_dir,
         archive_path,
@@ -170,13 +171,13 @@ def main() -> None:
     if not should_write_output(archive_path, cache_mode):
         return
 
-    files = iter_artifact_files(expected_paths)
+    files = iter_archive_files(expected_paths)
     members = package_files(repo_root, archive_path, files)
     checksum = sha256sum(archive_path)
     checksum_path, manifest_path = write_sidecars(archive_path, checksum, members)
 
     LOGGER.info(
-        "stage=package-artifacts status=done archive=%s files=%s sha256=%s checksum_file=%s manifest=%s",
+        "stage=package-archive status=done archive=%s files=%s sha256=%s checksum_file=%s manifest=%s",
         archive_path,
         len(members),
         checksum,

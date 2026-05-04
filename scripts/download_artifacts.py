@@ -24,7 +24,7 @@ LOGGER = get_logger(__name__)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Download and extract optional downstream generated-artifact caches. Prepared source-data is intentionally excluded and must be generated locally."
+        description="Download and extract a configured published artifact archive."
     )
     parser.add_argument(
         "--config",
@@ -39,7 +39,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--url",
-        help="Direct archive URL. Overrides artifact_archive_url from the config file.",
+        help="Direct archive URL. Overrides the resolved URL from the config file.",
     )
     parser.add_argument(
         "--cache",
@@ -57,6 +57,8 @@ def resolve_path(repo_root: Path, value: str | None) -> Path | None:
 
 def get_cache_mode(args: argparse.Namespace) -> str:
     return "refresh" if args.force else args.cache
+
+
 def resolve_expected_paths(repo_root: Path, config: dict[str, object]) -> list[Path]:
     values = config.get(
         "expected_cache_paths",
@@ -78,7 +80,7 @@ def validate_cache_state(expected_paths: list[Path], cache_mode: str) -> bool:
         return False
     if existing and cache_mode == "error":
         raise FileExistsError(
-            "Refusing to overwrite existing generated-artifact cache paths: "
+            "Refusing to overwrite existing artifact cache paths: "
             + ", ".join(str(path) for path in existing)
         )
     return True
@@ -157,12 +159,13 @@ def main() -> None:
 
     if not artifact_url:
         raise ValueError(
-            "No generated-artifact archive URL configured. Set archive_key/zenodo_config in "
+            "No artifact archive URL configured. Set archive_key in "
             f"{args.config} or pass --url."
         )
 
     LOGGER.info(
-        "stage=download-artifacts configured cache=%s extract_root=%s download_dir=%s",
+        "stage=download-artifacts configured archive_key=%s cache=%s extract_root=%s download_dir=%s",
+        args.archive_key,
         cache_mode,
         extract_root,
         download_dir,
