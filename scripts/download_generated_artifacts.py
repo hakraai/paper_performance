@@ -3,30 +3,39 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import tarfile
-from urllib.parse import urlparse
 from zipfile import ZipFile
 
 import requests
 from tqdm import tqdm
-import yaml
 
 from workflow_support.logging import configure_logging, get_logger
+from workflow_support.zenodo import (
+    DEFAULT_CONFIG as DEFAULT_ZENODO_CONFIG,
+    resolve_archive,
+    resolve_archive_config,
+    resolve_path as resolve_shared_path,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONFIG = REPO_ROOT / "configs" / "generated_artifacts_download.yaml"
+DEFAULT_CONFIG = DEFAULT_ZENODO_CONFIG
 LOGGER = get_logger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Download and extract an optional generated-artifact cache bundle."
+        description="Download and extract optional downstream generated-artifact caches. Prepared source-data is intentionally excluded and must be generated locally."
     )
     parser.add_argument(
         "--config",
         type=Path,
         default=DEFAULT_CONFIG,
         help="YAML configuration file.",
+    )
+    parser.add_argument(
+        "--archive-key",
+        default="generated_artifacts",
+        help="Archive key from the shared Zenodo configuration.",
     )
     parser.add_argument(
         "--url",
@@ -43,37 +52,26 @@ def parse_args() -> argparse.Namespace:
 
 
 def resolve_path(repo_root: Path, value: str | None) -> Path | None:
-    if value is None:
-        return None
-    path = Path(value)
-    if path.is_absolute():
-        return path
-    return repo_root / path
+    return resolve_shared_path(repo_root, value)
 
 
 def get_cache_mode(args: argparse.Namespace) -> str:
     return "refresh" if args.force else args.cache
-
-
-def archive_name_from_url(url: str) -> str:
-    parsed = urlparse(url)
-    name = Path(parsed.path).name
-    if not name:
-        raise ValueError(f"Could not derive an archive name from URL: {url}")
-    return name
-
-
 def resolve_expected_paths(repo_root: Path, config: dict[str, object]) -> list[Path]:
     values = config.get(
         "expected_cache_paths",
         [
-            "data/generated_source_data",
             "data/generated_model_data",
             "data/generated_calibrations",
             "data/generated_assessment",
             "figures/generated_paper",
         ],
     )
+    return [resolve_path(repo_root, str(value)) or repo_root for value in values]
+
+
+def resolve_required_local_paths(repo_root: Path, config: dict[str, object]) -> list[Path]:
+    values = config.get("required_local_paths", ["data/generated_source_data"])
     return [resolve_path(repo_root, str(value)) or repo_root for value in values]
 
 
@@ -152,33 +150,36 @@ def extract_archive(archive_path: Path, extract_root: Path) -> None:
 def main() -> None:
     args = parse_args()
     configure_logging()
-    config = yaml.safe_load(args.config.read_text()) or {}
     cache_mode = get_cache_mode(args)
+    archive_config = resolve_archive_config(args.archive_key, args.config)
 
-    repo_root = resolve_path(REPO_ROOT, config.get("repo_root")) or REPO_ROOT
-    extract_root = resolve_path(repo_root, config.get("extract_root")) or repo_root
-    download_dir = resolve_path(repo_root, config.get("download_dir")) or (repo_root / "data" / "obsolete" / "downloads")
-    expected_paths = resolve_expected_paths(repo_root, config)
-    artifact_url = args.url or config.get("artifact_archive_url")
+    repo_root = resolve_path(REPO_ROOT, archive_config.get("repo_root")) or REPO_ROOT
+    extract_root = resolve_path(repo_root, archive_config.get("extract_root")) or repo_root
+    download_dir = resolve_path(repo_root, archive_config.get("download_dir")) or (repo_root / "data" / "release" / "downloads")
+    expected_paths = resolve_expected_paths(repo_root, archive_config)
+    required_local_paths = resolve_required_local_paths(repo_root, archive_config)
+    resolved_archive_name, resolved_artifact_url = resolve_archive(args.archive_key, args.config)
+    artifact_url = args.url or resolved_artifact_url
 
     if not artifact_url:
         raise ValueError(
-            "No generated-artifact archive URL configured. Fill in artifact_archive_url in "
+            "No generated-artifact archive URL configured. Set archive_key/zenodo_config in "
             f"{args.config} or pass --url."
         )
 
     LOGGER.info(
-        "stage=download-artifacts configured cache=%s extract_root=%s download_dir=%s",
+        "stage=download-artifacts configured cache=%s extract_root=%s download_dir=%s required_local_paths=%s",
         cache_mode,
         extract_root,
         download_dir,
+        [str(path) for path in required_local_paths],
     )
 
     if not validate_cache_state(expected_paths, cache_mode):
         LOGGER.info("stage=download-artifacts status=cached")
         return
 
-    archive_name = str(config.get("archive_name") or archive_name_from_url(str(artifact_url)))
+    archive_name = str(archive_config.get("archive_name") or resolved_archive_name)
     archive_path = download_dir / archive_name
     download_dir.mkdir(parents=True, exist_ok=True)
 
@@ -196,6 +197,13 @@ def main() -> None:
         raise FileNotFoundError(
             "Artifact archive extraction completed, but expected cache paths were not created: "
             + ", ".join(str(path) for path in missing)
+        )
+
+    missing_local = [path for path in required_local_paths if not path.exists()]
+    if missing_local:
+        LOGGER.warning(
+            "stage=download-artifacts status=local-prerequisites-missing missing_paths=%s note=published artifact cache excludes source-data; run make source-data before assessment or figure regeneration",
+            [str(path) for path in missing_local],
         )
 
     LOGGER.info("stage=download-artifacts status=done expected_paths=%s", [str(path) for path in expected_paths])

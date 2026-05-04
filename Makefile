@@ -1,11 +1,13 @@
-.PHONY: help install download download-artifacts source-data model-data calibration assessment figures workflow workflow-refresh
+.PHONY: help install download-resources download-artifacts package-resources package-artifacts source-data model-data calibration assessment figures workflow workflow-refresh
 
 help:
 	@printf '%s\n' \
 	  'Available targets:' \
 	  '  make install                 Install/update the pixi environment' \
-	  '  make download                Download and unpack the required source data' \
-	  '  make download-artifacts      Optionally download and extract a published generated-artifact cache' \
+	  '  make download-resources      Download and unpack the required raw resources' \
+	  '  make download-artifacts      Optionally download downstream caches; source-data stays local' \
+	  '  make package-resources       Build the raw-resource bundle for Zenodo release upload' \
+	  '  make package-artifacts       Build the downstream generated-artifact cache archive for release upload' \
 	  '  make source-data             Build prepared source-data artifacts from raw resources' \
 	  '  make model-data              Run cached model-data generation' \
 	  '  make calibration             Run cached model calibration' \
@@ -17,11 +19,17 @@ help:
 install:
 	pixi install
 
-download:
-	pixi run python scripts/download_data.py
+download-resources:
+	pixi run download-resources
 
 download-artifacts:
 	pixi run download-artifacts
+
+package-resources:
+	pixi run package-resources
+
+package-artifacts:
+	pixi run package-artifacts
 
 source-data:
 	pixi run workflow-source-data

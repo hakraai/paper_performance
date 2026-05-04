@@ -17,7 +17,7 @@ paper_performance/
 ├── data/
 │   ├── resources/             # External inputs used by the workflow
 │   ├── generated_*/           # Generated workflow artifacts
-│   └── obsolete/              # Archived local artefacts no longer on the active path
+│   └── release/               # Downloaded publication archives
 ├── figures/                   # Generated figures
 ├── scripts/
 │   ├── workflow_support/      # Shared workflow modules used by the runners
@@ -52,16 +52,16 @@ The activation environment defined in `pixi.toml` sets `PYTHONPATH` for the loca
 If the source datasets are not present locally, download and unpack them with:
 
 ```bash
-make download
+make download-resources
 ```
 
 or
 
 ```bash
-pixi run python scripts/download_data.py
+pixi run download-resources
 ```
 
-The download helper retrieves the published upstream source datasets from Zenodo record `17816284` into `data/resources/`. The current record contains:
+The download helper retrieves and extracts `resources-bundle.zip` from Zenodo record `20025710` into `data/resources/`. The archive contains:
 
 - `Cm_grids_rotliechend.csv`
 - `Faultdata_NAM_reformatted_cleaned_selected.sqlite3`
@@ -71,9 +71,9 @@ The download helper retrieves the published upstream source datasets from Zenodo
 - `XY_PRF_ROTL_GY_V2a_2023.csv`
 - `rticm_stress.h5`
 
-These downloads are not the same as the prepared runtime inputs consumed by the supported workflow runners.
+These raw resources are not the same as the prepared runtime inputs consumed by the supported workflow runners. The same Zenodo record also provides the optional downstream cache archive consumed by `make download-artifacts`.
 
-If you want to reuse a published generated-artifact cache instead of rebuilding every stage locally, you can optionally download that cache bundle after filling in `artifact_archive_url` in `configs/generated_artifacts_download.yaml`:
+If you want to reuse published downstream caches instead of rebuilding every downstream stage locally, you can optionally download that cache bundle with:
 
 ```bash
 make download-artifacts
@@ -85,7 +85,9 @@ or
 pixi run download-artifacts
 ```
 
-The generated-artifact download is optional. If you skip it, the supported workflow can still build the cache locally from the raw resources.
+The generated-artifact download is optional. If you skip it, the supported workflow can still build the downstream caches locally from the raw resources.
+
+Prepared source-data is not part of the published cache archive. Always generate `data/generated_source_data/` locally from the raw Zenodo bundle before running the downstream stages. The current source-data stage writes about 72 GB under `data/generated_source_data/`, so reserve at least 80 GB of free disk space before running `make source-data`.
 
 ## Workflow
 
@@ -121,15 +123,15 @@ The individual workflow stages are also available through `make source-data`, `m
 
 ## Data and Artifacts
 
-The repository now distinguishes between raw upstream inputs and prepared runtime inputs:
+The repository now distinguishes between raw upstream inputs, locally generated source-data, and optional downstream caches:
 
 - raw upstream inputs downloaded from Zenodo live under `data/resources/`
-- optional published generated-artifact cache bundles are downloaded and extracted into the same generated output paths used by the workflow
+- optional published downstream cache bundles are downloaded and extracted into the same generated output paths used by the workflow
+- downloaded Zenodo archives live under `data/release/`
 - prepared runtime source data generated from those inputs live under `data/generated_source_data/`
-- archived legacy prepared artifacts kept for parity checking live under `data/obsolete/legacy_source_data_reference/`
 - active experiment YAMLs live under `configs/experiments/groningen_1995_2025/`
 
-The supported workflow starts from the prepared source-data set under `data/generated_source_data/`, specifically:
+The supported workflow always starts from the locally generated source-data set under `data/generated_source_data/`, specifically:
 
 - `data/generated_source_data/event_data.h5`
 - `data/generated_source_data/fault_data.h5`
@@ -152,15 +154,25 @@ pixi run workflow-source-data
 
 The source-data stage reads the raw Zenodo bundle directly and writes the prepared runtime inputs into `data/generated_source_data/`.
 
-The optional generated-artifact archive is expected to unpack directly into the repository cache layout, specifically:
+The source-data bundle is intentionally not shipped in the Zenodo release cache. Generate it locally once, then combine it with downloaded downstream caches as needed.
 
-- `data/generated_source_data/`
+The optional generated-artifact archive is expected to unpack directly into the repository cache layout for downstream stages only, specifically:
+
 - `data/generated_model_data/`
 - `data/generated_calibrations/`
 - `data/generated_assessment/`
 - `figures/generated_paper/`
 
-Legacy migration and parity-check helpers are kept under `forensics/` and are not part of the normal workflow surface.
+A release consumer who wants to recreate figures from the published downstream caches should use this sequence:
+
+```bash
+make download-resources
+make source-data
+make download-artifacts
+pixi run python scripts/run_figure_generation.py --config configs/figure_generation.yaml --cache refresh
+```
+
+That combination uses locally rebuilt `data/generated_source_data/` together with downloaded downstream caches under `data/generated_model_data/`, `data/generated_calibrations/`, `data/generated_assessment/`, and `figures/generated_paper/`.
 
 Run the model-data stage with:
 

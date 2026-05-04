@@ -1,58 +1,95 @@
-import requests
+from __future__ import annotations
+
+import argparse
 from pathlib import Path
 from zipfile import ZipFile
+
+import requests
 from tqdm import tqdm
 
-ZENODO_RECORD_ID = "17816284"
-API_URL = f"https://zenodo.org/api/records/{ZENODO_RECORD_ID}"
-RESOURCE_DIR = Path(__file__).parent.parent / "data" / "resources"
+from workflow_support.zenodo import (
+    DEFAULT_CONFIG as DEFAULT_ZENODO_CONFIG,
+    resolve_archive,
+    resolve_archive_config,
+    resolve_path as resolve_shared_path,
+)
 
 
-def download_file(url, dest_path):
-    response = requests.get(url, stream=True)
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_CONFIG = DEFAULT_ZENODO_CONFIG
+DEFAULT_DOWNLOAD_DIR = REPO_ROOT / "data" / "release" / "downloads"
+DEFAULT_EXTRACT_ROOT = REPO_ROOT / "data" / "resources"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Download and extract the published raw-resource bundle."
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=DEFAULT_CONFIG,
+        help="YAML configuration file.",
+    )
+    parser.add_argument(
+        "--archive-key",
+        default="resources",
+        help="Archive key from the shared Zenodo configuration.",
+    )
+    return parser.parse_args()
+
+
+def resolve_path(repo_root: Path, value: str | None) -> Path | None:
+    return resolve_shared_path(repo_root, value)
+
+
+def download_file(url: str, dest_path: Path) -> None:
+    response = requests.get(url, stream=True, timeout=60)
+    response.raise_for_status()
     total_size_in_bytes = int(response.headers.get("content-length", 0))
-    block_size = 1024
     progress_bar = tqdm(
         total=total_size_in_bytes, unit="iB", unit_scale=True, desc=dest_path.name
     )
 
-    with open(dest_path, "wb") as file:
-        for data in response.iter_content(block_size):
-            progress_bar.update(len(data))
-            file.write(data)
+    with dest_path.open("wb") as file_handle:
+        for chunk in response.iter_content(chunk_size=1024 * 1024):
+            if not chunk:
+                continue
+            progress_bar.update(len(chunk))
+            file_handle.write(chunk)
     progress_bar.close()
 
 
-def main():
-    RESOURCE_DIR.mkdir(parents=True, exist_ok=True)
+def extract_zip_archive(archive_path: Path, extract_dir: Path) -> None:
+    print(f"Extracting {archive_path.name}...")
+    with ZipFile(archive_path, "r") as zip_ref:
+        zip_ref.extractall(extract_dir)
+    print(f"Extracted {archive_path.name}.")
 
-    print(f"Fetching metadata for Zenodo record {ZENODO_RECORD_ID}...")
-    response = requests.get(API_URL)
-    if response.status_code != 200:
-        print(f"Failed to fetch metadata: {response.status_code}")
-        return
 
-    data = response.json()
-    files = data.get("files", [])
+def main() -> None:
+    args = parse_args()
+    archive_config = resolve_archive_config(args.archive_key, args.config)
+    archive_name, artifact_url = resolve_archive(args.archive_key, args.config)
 
-    print(f"Found {len(files)} files.")
+    download_dir = resolve_path(REPO_ROOT, archive_config.get("download_dir")) or DEFAULT_DOWNLOAD_DIR
+    extract_root = resolve_path(REPO_ROOT, archive_config.get("extract_root")) or DEFAULT_EXTRACT_ROOT
+    archive_path = download_dir / archive_name
+    legacy_archive_path = extract_root / archive_name
 
-    for file_info in files:
-        file_url = file_info["links"]["self"]
-        file_name = file_info["key"]
-        dest_path = RESOURCE_DIR / file_name
+    download_dir.mkdir(parents=True, exist_ok=True)
+    extract_root.mkdir(parents=True, exist_ok=True)
 
-        if dest_path.exists():
-            print(f"File {file_name} already exists. Skipping download.")
-        else:
-            print(f"Downloading {file_name}...")
-            download_file(file_url, dest_path)
+    if archive_path.exists():
+        print(f"File {archive_name} already exists. Skipping download.")
+    elif legacy_archive_path.exists() and legacy_archive_path != archive_path:
+        print(f"File {archive_name} already exists at {legacy_archive_path}. Reusing legacy archive location.")
+        archive_path = legacy_archive_path
+    else:
+        print(f"Downloading {archive_name}...")
+        download_file(str(artifact_url), archive_path)
 
-        if file_name.endswith(".zip"):
-            print(f"Extracting {file_name}...")
-            with ZipFile(dest_path, "r") as zip_ref:
-                zip_ref.extractall(RESOURCE_DIR)
-            print(f"Extracted {file_name}.")
+    extract_zip_archive(archive_path, extract_root)
 
 
 if __name__ == "__main__":

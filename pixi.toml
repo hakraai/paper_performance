@@ -14,7 +14,10 @@ JAX_ENABLE_COMPILATION_CACHE = "1"
 JAX_COMPILATION_CACHE_DIR = "$PIXI_PROJECT_ROOT/.cache/jax_compilation"
 
 [tasks]
-download-artifacts = "python scripts/download_generated_artifacts.py --config configs/generated_artifacts_download.yaml --cache reuse"
+download-resources = "python scripts/download_data.py --archive-key resources"
+download-artifacts = "python scripts/download_generated_artifacts.py --archive-key generated_artifacts --cache reuse"
+package-resources = "python scripts/package_generated_artifacts.py --archive-key resources --cache reuse"
+package-artifacts = "python scripts/package_generated_artifacts.py --archive-key generated_artifacts --cache reuse"
 workflow-source-data = "python scripts/run_source_data.py --config configs/source_data.yaml --cache reuse"
 workflow-model-data = "python scripts/run_model_data.py --config configs/model_data.yaml --cache reuse"
 workflow-calibration = "python scripts/run_model_calibration.py --config configs/model_calibration.yaml --cache reuse"

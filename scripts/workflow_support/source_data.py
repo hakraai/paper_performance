@@ -99,8 +99,9 @@ def prepare_polygons(
 
 
 def prepare_fault_data(fault_data: xr.Dataset, grid_data: xr.Dataset) -> xr.Dataset:
+    fault_grid_data = grid_data[["support", "reservoir_thickness"]]
     fault_data = fault_data.merge(
-        grid_data.interp(
+        fault_grid_data.interp(
             {
                 "x": fault_data["x"],
                 "y": fault_data["y"],
@@ -300,15 +301,6 @@ def calculate_stress(
             }
         )
     )
-
-    fault_attributes = {}
-    for variable in ["stress_RTiCM", "stress_linear"]:
-        fault_attributes[variable + "_throw"] = (
-            grid_data[variable]
-            .interp(x=fault_data["x"], y=fault_data["y"], method="nearest")
-            .drop_vars(["x", "y"])
-        ) * fault_data["throw_clipped"]
-    fault_data.update(xr.Dataset(fault_attributes))
     return grid_data, fault_data
 
 
@@ -354,7 +346,7 @@ def write_initial_outputs(
         driver="ESRI Shapefile",
     )
     event_data.to_netcdf(event_data_path, mode="w", engine="h5netcdf")
-    fault_data.drop_vars("geometry").reset_index(["ID", "bernstein_basis"]).to_netcdf(
+    fault_data.drop_vars("geometry", errors="ignore").reset_index(["ID", "bernstein_basis"]).to_netcdf(
         fault_data_path,
         mode="w",
         engine="h5netcdf",
