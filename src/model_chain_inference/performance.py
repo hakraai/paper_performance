@@ -408,6 +408,7 @@ def multiscale_spatial_performance_assessment(
         to_sum["observations"].fillna(0),
         to_sum["forecast"].fillna(0),
         sample_size,
+        rng=rng,
     )
 
     def __f__(v):
