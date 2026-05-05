@@ -89,6 +89,31 @@ def validate_scenario_names(scenario_names: list[str], scenarios: dict[str, obje
         )
 
 
+def validate_perspective_timeframes(
+    perspectives: list[str],
+    perspective_timeframes: dict[str, object],
+    config_path: Path,
+) -> None:
+    missing = [perspective for perspective in perspectives if perspective not in perspective_timeframes]
+    if missing:
+        raise ValueError(
+            f"Missing perspective_timeframes entries in {config_path} for: {missing}. "
+            f"Available entries: {sorted(perspective_timeframes.keys())}"
+        )
+
+    for perspective in perspectives:
+        timeframe_config = perspective_timeframes[perspective]
+        if not isinstance(timeframe_config, dict):
+            raise ValueError(
+                f"Expected perspective_timeframes['{perspective}'] in {config_path} to be a mapping."
+            )
+        missing_purposes = [purpose for purpose in ["calibration", "etas"] if purpose not in timeframe_config]
+        if missing_purposes:
+            raise ValueError(
+                f"Missing perspective_timeframes['{perspective}'] entries in {config_path}: {missing_purposes}"
+            )
+
+
 def build_and_write_scenario_dataset(
     output_path: Path,
     data_dir: Path,
@@ -96,6 +121,7 @@ def build_and_write_scenario_dataset(
     perspective: str,
     polygon: str,
     mmin: float,
+    perspective_timeframes: dict[str, dict[str, list[str]]],
     scenario_name: str,
     target_step: float,
     etas_d: float,
@@ -105,7 +131,7 @@ def build_and_write_scenario_dataset(
     scenarios = load_scenarios(scenarios_file)
     validate_scenario_names([scenario_name], scenarios, scenarios_file)
     event_data, grid_data = load_inputs(data_dir)
-    filterset = build_filterset(perspective, polygon, mmin)
+    filterset = build_filterset(perspective, polygon, mmin, perspective_timeframes)
     dataset = generate_calibration_dataset(
         event_data=event_data,
         grid_data=grid_data,
@@ -143,6 +169,7 @@ def main() -> None:
     perspectives = config.get("perspectives", ["prospective", "retrospective"])
     polygon = config.get("polygon", "GroningenFieldGWC")
     mmin = float(config.get("mmin", 1.45))
+    perspective_timeframes = config.get("perspective_timeframes") or {}
     target_step = float(config.get("target_step", 0.02))
     etas_d = float(config.get("etas_d", (2000.0) ** 2))
     etas_q = float(config.get("etas_q", 3.16))
@@ -150,6 +177,7 @@ def main() -> None:
     scenario_names = config.get("scenarios", CURRENT_SCENARIOS)
     workers = max(1, int(config.get("workers", 1)))
 
+    validate_perspective_timeframes(list(perspectives), perspective_timeframes, args.config)
     scenarios = load_scenarios(scenarios_file)
     validate_scenario_names(list(scenario_names), scenarios, scenarios_file)
     event_data, grid_data = load_inputs(source_data_root)
@@ -173,7 +201,7 @@ def main() -> None:
             perspective_index,
             total_perspectives,
         )
-        filterset = build_filterset(perspective, polygon, mmin)
+        filterset = build_filterset(perspective, polygon, mmin, perspective_timeframes)
         pending_outputs: list[tuple[str, Path]] = []
         cached_outputs: list[str] = []
         for scenario_name in scenario_names:
@@ -240,6 +268,7 @@ def main() -> None:
                             perspective,
                             polygon,
                             mmin,
+                            perspective_timeframes,
                             scenario_name,
                             target_step,
                             etas_d,

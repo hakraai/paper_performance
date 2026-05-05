@@ -7,12 +7,16 @@ import arviz as az
 import matplotlib as mpl
 import yaml
 
-from run_performance_assessment import (
+from workflow_support.assessment_runtime import (
     DEFAULT_MODEL_NAMES,
-    REPO_ROOT,
     build_testsuite_artifact,
     collect_calibrations,
     filter_from_attrs,
+    load_assessment,
+    load_cell_covering,
+    load_context,
+)
+from workflow_support.figure_rendering import (
     generate_adaptive_analysis_plots_all_models,
     generate_bs_basis_plot,
     generate_bs_spatial_plot,
@@ -21,20 +25,22 @@ from run_performance_assessment import (
     generate_loo_plot,
     generate_model_time_series_plot,
     generate_spatial_performance_plots,
-    get_assessment_path,
-    get_cell_covering_path,
     has_perspective_models,
-    load_assessment,
-    load_cell_covering,
-    load_context,
     log_skipped_figure,
     maybe_render_formats,
     normalize_figure_formats,
     plot_likelihood_tests_2x4,
+)
+from workflow_support.filtering import build_perspective_filter_attrs, require_timeframe_config
+from workflow_support.logging import configure_logging, get_logger
+from workflow_support.paths import (
+    REPO_ROOT,
+    default_model_specs_path,
+    default_source_data_root,
+    get_assessment_path,
+    get_cell_covering_path,
     resolve_path,
 )
-from workflow_support.logging import configure_logging, get_logger
-from workflow_support.paths import default_model_specs_path, default_source_data_root
 
 
 LOGGER = get_logger(__name__)
@@ -137,12 +143,9 @@ def main() -> None:
     perspectives = config.get("perspectives", ["prospective", "retrospective"])
     model_names = config.get("model_names", DEFAULT_MODEL_NAMES)
     model_ids = config.get("models", list(model_names.keys()))
-    timeframe_testing = config.get(
-        "timeframe_testing",
-        config.get("timeframe_prospective_testing", ["2020-10-01", "2025-10-01"]),
-    )
-    timeframe_forecast = config.get("timeframe_forecast")
-    timeframe_plotting = config.get("timeframe_plotting", ["1995-01-01", "2028-01-01"])
+    timeframe_testing = require_timeframe_config(config, "timeframe_testing", args.config)
+    timeframe_forecast = require_timeframe_config(config, "timeframe_forecast", args.config)
+    timeframe_plotting = require_timeframe_config(config, "timeframe_plotting", args.config)
     figure_formats = normalize_figure_formats(config.get("figure_formats", config.get("figure_extension")))
     figure_dpi = int(config.get("figure_dpi", 600))
 
@@ -169,14 +172,14 @@ def main() -> None:
 
     forecast_source = "retrospective" if "retrospective" in rc else "prospective"
     forecast_filter_attrs = dict(rc[forecast_source][model_ids[0]].attrs)
-    retrospective_filter_attrs = dict(forecast_filter_attrs)
-    if timeframe_forecast is not None:
-        retrospective_filter_attrs["timeframe"] = timeframe_forecast
-    prospective_filter_attrs = dict(forecast_filter_attrs)
-    prospective_filter_attrs["timeframe"] = timeframe_testing
-    time_series_filter_attrs = dict(forecast_filter_attrs)
-    if timeframe_forecast is not None:
-        time_series_filter_attrs["timeframe"] = timeframe_forecast
+    filter_attrs = build_perspective_filter_attrs(
+        forecast_filter_attrs,
+        timeframe_testing,
+        timeframe_forecast,
+    )
+    retrospective_filter_attrs = filter_attrs["retrospective"]
+    prospective_filter_attrs = filter_attrs["prospective"]
+    time_series_filter_attrs = filter_attrs["time_series"]
     time_series_filterset = filter_from_attrs(time_series_filter_attrs).sel(purpose="calibration")
     LOGGER.info(
         "stage=figures status=filters retrospective_timeframe=%s prospective_timeframe=%s time_series_timeframe=%s",

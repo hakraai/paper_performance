@@ -102,6 +102,8 @@ def biot_coefficient(compressibility, bulk_modulus, solid_modulus):
     # however we may want to make a distintion between the two
     biot = compressibility * poroelastic_modulus(bulk_modulus, solid_modulus)
     return biot
+
+
 def stress_susceptibility(gradient, poisson_ratio, bulk_modulus, solid_modulus):
     """Compute the proportionality between pressure drop and stress change."""
     compressibility = 1.0 / bulk_modulus

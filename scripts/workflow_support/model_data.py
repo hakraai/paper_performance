@@ -3,31 +3,26 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-SRC_ROOT = REPO_ROOT / "src"
-CHAINTOOLS_ROOT = SRC_ROOT / "chaintools"
-for path in [SRC_ROOT, CHAINTOOLS_ROOT]:
-    path_str = str(path)
-    if path_str not in sys.path:
-        sys.path.insert(0, path_str)
-
 import xarray as xr
 import yaml
 
-import model_chain_inference as mci
+
+def _import_model_chain_inference():
+    try:
+        import model_chain_inference as package
+    except ModuleNotFoundError:
+        repo_root = Path(__file__).resolve().parents[2]
+        src_root = repo_root / "src"
+        chaintools_root = src_root / "chaintools"
+        for path in [src_root, chaintools_root]:
+            path_str = str(path)
+            if path_str not in sys.path:
+                sys.path.insert(0, path_str)
+        import model_chain_inference as package
+    return package
 
 
-PERSPECTIVE_TIMEFRAMES = {
-    "prospective": {
-        "calibration": ["1995-01-01", "2020-10-01"],
-        "etas": ["1990-01-01", "2020-10-01"],
-    },
-    "retrospective": {
-        "calibration": ["1995-01-01", "2025-10-01"],
-        "etas": ["1990-01-01", "2025-10-01"],
-    },
-}
+mci = _import_model_chain_inference()
 
 
 def load_inputs(data_dir: Path) -> tuple[xr.Dataset, xr.Dataset]:
@@ -45,12 +40,26 @@ def load_inputs(data_dir: Path) -> tuple[xr.Dataset, xr.Dataset]:
     return event_data, grid_data
 
 
-def build_filterset(perspective: str, polygon: str, mmin: float) -> xr.Dataset:
-    timeframe = PERSPECTIVE_TIMEFRAMES[perspective]
+def build_filterset(
+    perspective: str,
+    polygon: str,
+    mmin: float,
+    perspective_timeframes: dict[str, dict[str, list[str]]],
+) -> xr.Dataset:
+    try:
+        timeframe = perspective_timeframes[perspective]
+        calibration_timeframe = timeframe["calibration"]
+        etas_timeframe = timeframe["etas"]
+    except KeyError as exc:
+        raise ValueError(
+            f"Missing configured timeframes for perspective '{perspective}'. "
+            "Expected 'calibration' and 'etas' entries under 'perspective_timeframes'."
+        ) from exc
+
     return xr.Dataset(
         {
             "timeframe": xr.DataArray(
-                data=[timeframe["calibration"], timeframe["etas"]],
+                data=[calibration_timeframe, etas_timeframe],
                 dims=["purpose", "epoch"],
                 coords={"purpose": ["calibration", "etas"], "epoch": ["start", "finish"]},
             ),
