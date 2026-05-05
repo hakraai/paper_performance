@@ -180,6 +180,8 @@ pixi run python scripts/run_figure_generation.py --config configs/figure_generat
 
 That combination uses locally rebuilt `data/generated_source_data/` together with downloaded downstream caches under `data/generated_model_data/`, `data/generated_calibrations/`, `data/generated_assessment/`, and `figures/generated_paper/`.
 
+Reproducibility note: the workflow reproduces the assessment boolean outcomes from the published downstream caches, but not every published PNG figure is pixel-perfect when regenerated from the current code path. This came from an earlier mistake in the assessment random-seed plumbing: the configured assessment seed was added to the workflow, but one multiscale spatial simulation call still failed to receive that RNG. As a result, the multiscale spatial summary values drifted slightly between refresh runs even though the derived boolean test results remained unchanged. The affected PNG figures are `multi_prospective.png`, `multi_retrospective.png`, `multi_bs_prospective.png`, and `multi_bs_retrospective.png`; the other generated paper PNGs match pixel-perfectly.
+
 Run the model-data stage with:
 
 ```bash
@@ -233,11 +235,11 @@ This project is licensed under the EUPL v1.2. See [LICENSE](LICENSE).
 If you use this repository or its methodology, cite the accompanying manuscript.
 
 ```bibtex
-@article{Kraaijpoel202X,
+@article{Kraaijpoel2026,
   title={Performance testing, comparison and selection of induced seismicity rate models for the Groningen gas field},
   author={Kraaijpoel, D.A. and Aben, F.M. and Osinga, S. and Pluymaekers, M.P.D.},
-  journal={Journal Name},
-  year={202X},
+  journal={BSSA},
+  year={2026},
   doi={...}
 }
 ```
