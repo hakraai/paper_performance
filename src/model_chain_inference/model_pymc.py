@@ -1,3 +1,5 @@
+"""PyMC model builders for ETF, ETAS, and related hybrid formulations."""
+
 import pymc as pm
 import pymc.model.transform.optimization as pmto
 import pytensor.tensor as pt
@@ -23,6 +25,7 @@ from .pymc_support import (
 
 
 def dsm_model(dsm_parameter_data, m=None):
+    """Build DSM-derived covariate, stress, and azimuth terms in a PyMC model."""
     m = pm.modelcontext(m)
 
     # preconditioning: initialized indexing and/or interpolation parameters
@@ -123,6 +126,7 @@ def calculate_stress(covariate_tpl, compr_id, m=None):
 
 
 def size_model(size_parameter_data, m=None, **kwargs):
+    """Build optional magnitude-size relation terms for exposed and observed data."""
     if size_parameter_data is None:
         return {}
 
@@ -202,6 +206,7 @@ def size_model(size_parameter_data, m=None, **kwargs):
 
 
 def rate_model(rate_parameter_data, m=None, **kwargs):
+    """Build background count, rate, and optional rate-density terms."""
     m = pm.modelcontext(m)
 
     # collect data from the dynamic subsurface model
@@ -318,6 +323,7 @@ def rate_model(rate_parameter_data, m=None, **kwargs):
 
 
 def contract_and_diff(multiplicands, ignore_dims, epoch_id):
+    """Multiply aligned terms, contract nuisance dimensions, and difference epochs."""
     measure_dims = multiplicands[0][1]
     contract_dims = [d for d in measure_dims if d not in ignore_dims]
     count_tpl = einsum_multiply(multiplicands, contract_dims)
@@ -333,6 +339,7 @@ def collect_multiplicands(
     radial_id,
     m=None,
 ):
+    """Collect the multiplicative factors that define the background rate model."""
     m = pm.modelcontext(m)
 
     # collect multiplicands
@@ -410,6 +417,7 @@ def rate_multiplier_pdf(b, m_target, m_ref):
 
 
 def etas_model(etas_parameter_data, m=None):
+    """Build ETAS offspring count and rate terms from parent-event data."""
     if etas_parameter_data is None:
         return {}
 
@@ -562,6 +570,7 @@ def total_rate_model(m=None, **kwargs):
 
 
 def register_observables(m=None, **kwargs):
+    """Register the likelihood terms for counts, spacetime, and magnitudes."""
     m = pm.modelcontext(m)
 
     # unpack kwargs
@@ -635,6 +644,7 @@ def generate_ts_etf_etas_model(
     m=None,
     **kwargs,
 ):
+    """Assemble the full ETF plus ETAS PyMC model from data and settings."""
     # handle model context
     if m is None:
         try:
@@ -686,6 +696,7 @@ def generate_and_test_model(
     settings,
     freeze=False,
 ):
+    """Build a model, optionally freeze dims and data, and run debug checks."""
     m = model_f(data, **settings)
 
     if freeze:
@@ -697,10 +708,12 @@ def generate_and_test_model(
 
 
 def gated_etas_temporal(t, c, p):
+    """Evaluate the ETAS temporal kernel only for positive delays."""
     t_local = pt.clip(t, 0.0, pt.inf)
     return pt.switch(pt.gt(t, 0.0), model.etas_temporal(t_local, c, p), 0.0)
 
 
 def gated_etas_temporal_cumulative(t, c, p):
+    """Evaluate the cumulative ETAS temporal kernel only for positive delays."""
     t_local = pt.clip(t, 0.0, pt.inf)
     return pt.switch(pt.gt(t, 0.0), model.etas_temporal_cumulative(t_local, c, p), 0.0)

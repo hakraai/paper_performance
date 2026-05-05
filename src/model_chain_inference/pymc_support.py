@@ -1,3 +1,5 @@
+"""Alignment, registration, and tensor helpers for PyMC model assembly."""
+
 import string
 import xarray as xr
 import numpy as np
@@ -529,6 +531,7 @@ def retrieve_parameter(par_id, m=None, **kwargs):
 
 
 def _diff(array, axis):
+    """Return the difference between the last and first slices along an axis."""
     diff = pt.take(array, -1, axis=axis) - pt.take(array, 0, axis=axis)
     return diff
 

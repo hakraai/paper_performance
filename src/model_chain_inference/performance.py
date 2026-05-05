@@ -1,3 +1,5 @@
+"""Synthetic catalogue generation and forecast performance assessment helpers."""
+
 import numpy as np
 import xarray as xr
 import scipy.stats as st
@@ -54,6 +56,7 @@ def generate_simulations(observed_counts, expected_counts, sample_size, rng=None
 
 
 def create_adaptive_cell_covering(array, collection):
+    """Construct a non-overlapping adaptive cell covering from aggregate selections."""
     def cell_covering(array):
         if len(array.dims) > 0:
             array = array.stack(cell=array.dims).dropna("cell")
@@ -83,6 +86,7 @@ def create_adaptive_cell_covering(array, collection):
 
 
 def add_multiscale_index(data, spatial_coordinates=None):
+    """Expand spatial coordinates into a dyadic multiscale indexing scheme."""
     if spatial_coordinates is None:
         spatial_coordinates = "x", "y"
     x, y = spatial_coordinates
@@ -115,6 +119,7 @@ def add_multiscale_index(data, spatial_coordinates=None):
 
 
 def get_combined_dimensions(spatial_ds, ms_mode=None):
+    """Return the aggregation order used for multiscale spatial coarsening."""
     if ms_mode is None:
         ms_mode = "rectangular"  # "square" or "rectangular"
 
@@ -136,6 +141,7 @@ def get_combined_dimensions(spatial_ds, ms_mode=None):
 
 
 def generate_adaptive_cell_covering(ms_spatial_ds, ms_mode=None, threshold=None):
+    """Build adaptive spatial cells that meet a minimum-count threshold."""
     if ms_mode is None:
         ms_mode = "rectangular"  # "square" or "rectangular"
     combined_dimensions = get_combined_dimensions(ms_spatial_ds, ms_mode)
@@ -175,6 +181,7 @@ def performance_assessment(
     q=None,
     spatial_dims=None,
 ):
+    """Run count and coarsened spatial performance assessment for a testsuite."""
     if spatial_dims is None:
         spatial_dims = ["loc"]
     if coarsening_factors is None:
@@ -524,6 +531,7 @@ def adaptive_spatial_performance_assessment(
 def multiscale_spatial_performance_assessment(
     ms_spatial_ds, ms_mode=None, sample_size=10_000, rng=None
 ):
+    """Evaluate spatial performance statistics over successive coarsening levels."""
     # many scale collection
     to_sum = ms_spatial_ds.drop_vars(["x", "y"])
     combined_dims = get_combined_dimensions(ms_spatial_ds, ms_mode=ms_mode)
@@ -599,6 +607,7 @@ def multiscale_spatial_performance_assessment(
 
 
 def cell_statistics(v):
+    """Derive forecast, observation, density, and CDF summaries for each cell."""
 
     n_obs = v["observations"].sum()
     n_exp = v["forecast"].sum()
@@ -621,6 +630,7 @@ def cell_statistics(v):
 
 
 def xr_synthetic_catalogues_normalized(rates, count, sample_size, rng=None):
+    """Wrap fixed-size catalogue simulation so it broadcasts cleanly over xarray dims."""
     return xr.apply_ufunc(
         simulate_catalogues_fixed_size,
         rates,
@@ -631,6 +641,7 @@ def xr_synthetic_catalogues_normalized(rates, count, sample_size, rng=None):
 
 
 def xr_synthetic_catalogues(rates, sample_size, rng=None):
+    """Wrap Poisson catalogue simulation so it broadcasts cleanly over xarray dims."""
     return xr.apply_ufunc(
         simulate_catalogues_poisson,
         rates,
@@ -677,6 +688,7 @@ def simulate_catalogues_fixed_size(rates, count=None, sample_size=10_000, rng=No
 
 
 def simulate_catalogues_poisson(rates, sample_size=10_000, rng=None):
+    """Simulate synthetic catalogues with Poisson-distributed total event counts."""
     rng = np.random.default_rng(rng)
 
     expectation = np.nansum(rates)
@@ -695,6 +707,7 @@ def simulate_catalogues_poisson(rates, sample_size=10_000, rng=None):
 
 
 def stack_and_align(input_ds):
+    """Stack x and y dimensions into aligned sparse X and Y axes."""
     output_ds = (
         input_ds.stack(
             {
@@ -712,6 +725,7 @@ def stack_and_align(input_ds):
 
 
 def create_spatial_ds(testsuite):
+    """Extract spatial forecasts, observations, and entropy terms from a testsuite."""
     spatial_ds = xr.Dataset(
         {
             "observations": testsuite["spatial/observation"],
@@ -733,12 +747,14 @@ def create_spatial_ds(testsuite):
 
 
 def observed_entropy(forecast, observations):
+    """Compute the entropy-like term used by heterogeneous Poisson likelihoods."""
     present = forecast > 0
     log_expected = np.log(forecast.where(present, 1))
     return forecast - observations * log_expected
 
 
 def create_temporal_ds(testsuite):
+    """Extract temporal forecasts, observations, and entropy terms from a testsuite."""
     temporal_ds = xr.Dataset(
         {
             "observations": testsuite["temporal/observation"],
@@ -755,6 +771,7 @@ def create_temporal_ds(testsuite):
 def generate_cell_covering(
     grid_data, event_data, filterset, ms_mode="rectangular", threshold=None
 ):
+    """Generate an adaptive cell covering from grid data, events, and a filter set."""
     data = generate_closed_time_series(grid_data, filterset["timeframe"])
     realisation = get_realisation(data, event_data, filterset)
     realisation, data = xr.align(realisation, data)

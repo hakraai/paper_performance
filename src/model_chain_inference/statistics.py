@@ -1,3 +1,5 @@
+"""Distributional summaries and likelihood helpers for forecast evaluation."""
+
 import numpy as np
 import xarray as xr
 import scipy.stats as st
@@ -5,6 +7,7 @@ import scipy.special as sc
 
 
 def get_cumulative_probabilities_poisson(observations, mean):
+    """Return Poisson survival and cumulative probabilities around the observations."""
     sf = xr.apply_ufunc(
         st.poisson.sf,
         observations,  # exclusive sf: probability of exceeding observation value
@@ -95,6 +98,7 @@ def get_cumulative_probabilities_nbinom(observations, mean, variance):
 
 
 def get_cumulative_probabilities(observations, mean, variance=None):
+    """Return cumulative probability summaries for Poisson and optional NB models."""
     ds = xr.Dataset()
     ds["poisson"] = get_cumulative_probabilities_poisson(observations, mean)
     if variance is not None:
@@ -104,6 +108,7 @@ def get_cumulative_probabilities(observations, mean, variance=None):
 
 
 def get_count_fractiles(mean, variance=None, q=None):
+    """Compute count fractiles for Poisson and optional overdispersed forecasts."""
     if q is None:
         q = get_default_fractiles()
 
@@ -130,12 +135,14 @@ def get_count_fractiles(mean, variance=None, q=None):
 
 
 def nbinom_pars_from_mean_var(mean, var):
+    """Convert mean and variance into SciPy negative-binomial parameters."""
     p = mean / var
     n = mean**2 / (var - mean)
     return n, p
 
 
 def get_default_fractiles():
+    """Return the default lower and upper 95% fractile probabilities."""
     q = xr.DataArray(
         [0.025, 0.975],
         dims="fractile",

@@ -1,3 +1,5 @@
+"""Plotting helpers for forecast diagnostics and performance summaries."""
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
@@ -6,11 +8,13 @@ import model_chain_inference as mci
 
 
 def create_contour_patch(polygon, **kwargs):
+    """Create a Matplotlib polygon patch from a contour geometry."""
     x, y = polygon.exterior.coords.xy
     return patches.Polygon(np.array([x, y]).T, fc="none", **kwargs)
 
 
 def postprocess_ax(ax, polygon, xticks=None, yticks=None, **kwargs):
+    """Clip spatial plot content to a polygon and remove axis decoration."""
     # return for empty axes
     if len(ax.collections) == 0:
         return
@@ -31,6 +35,7 @@ def postprocess_ax(ax, polygon, xticks=None, yticks=None, **kwargs):
 
 
 def postprocess_facets(g, polygon, **kwargs):
+    """Apply polygon clipping and axis cleanup to every facet in a grid."""
     for x in g.axs.flat:
         postprocess_ax(x, polygon, **kwargs)
     return g
@@ -39,6 +44,7 @@ def postprocess_facets(g, polygon, **kwargs):
 def make_test_axis(
     ax, obs, fractiles, test_result, xlabel, ylabel, ms=10, capsize=6, pval=None
 ):
+    """Draw a horizontal interval plot for one set of likelihood test results."""
     stacked_fractiles = fractiles.stack({"q": [...]})
     mn = np.amin([obs, stacked_fractiles.min()])
     mx = np.amax([obs, stacked_fractiles.max()])
@@ -81,6 +87,7 @@ def make_test_axis(
 
 
 def plot_test_results(ds, title=None, dim="level", **kwargs):
+    """Plot likelihood test summaries across levels and likelihood functions."""
     nx = ds.sizes[dim]
     ny = ds.sizes["likelihood_function"]
     fig, axes = plt.subplots(ny, nx, **kwargs)
@@ -111,6 +118,7 @@ def plot_test_results(ds, title=None, dim="level", **kwargs):
 
 
 def plot_rates(suite, pol):
+    """Plot forecast rates and a normalized synthetic counterpart over the field."""
     fc = suite["spatial/forecast/mean"]
     if "strain_mode" in fc.dims:
         fc = fc.isel["strain_mode"] = -1
@@ -138,10 +146,12 @@ def plot_rates(suite, pol):
 
 
 def plot_test(perfass, title=None):
+    """Plot the main likelihood test panel from performance assessment output."""
     plot_test_results(perfass[0], title)
 
 
 def plot_spatial_coarsening(perfass, pol, title=None):
+    """Visualize coarsened spatial forecasts, observations, and CDF values."""
     fig, axes = plt.subplots(
         ncols=len(perfass[1]),
         nrows=3,
@@ -165,6 +175,7 @@ def plot_spatial_coarsening(perfass, pol, title=None):
 
 
 def plot_spatial_statistics(perf_stats, pol, title=None):
+    """Plot spatial summary statistics by multiscale level."""
     g = (
         perf_stats["spatial_statistics"]
         .sel(
@@ -194,6 +205,7 @@ def plot_time_series(
     legend_loc="upper right",
     separation_date=None,
 ):
+    """Plot temporal forecasts and observed counts for a testsuite."""
     if timeframe is None:
         t0, t1 = suite["meta/time_range"]["datetime"].data[[0, -1]]
     else:
@@ -245,6 +257,7 @@ def plot_time_series(
 
 
 def plot_bs_contrib(bs_dict, ax=None, yerr=False):
+    """Plot Bernstein component contributions to background event counts."""
     if ax is None:
         ax = plt.subplots()[1]
     ch = (
@@ -276,6 +289,7 @@ def plot_bs_contrib(bs_dict, ax=None, yerr=False):
 
 
 def plot_time_realisation(realisation, ax, label=None, c="k", final_date=None):
+    """Plot an observed realization as a stepwise time series."""
     if final_date is not None:
         final_date = np.datetime64(final_date)
         realisation_extended = realisation.isel(
@@ -298,6 +312,7 @@ def plot_time_realisation(realisation, ax, label=None, c="k", final_date=None):
 def plot_time_forecast(
     mean, variance=None, ax=None, label=None, q=None, final_date=None
 ):
+    """Plot the mean temporal forecast with count and rate prediction intervals."""
     if label is None:
         label = [
             "mean annual earthquake rate",

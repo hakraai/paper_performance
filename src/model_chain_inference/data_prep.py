@@ -1,3 +1,5 @@
+"""Prepare inference-ready datasets from gridded covariates and event catalogues."""
+
 import xarray as xr
 import chaintools.tools_grid as tgrid
 from .model_core import etas_spatial
@@ -5,6 +7,7 @@ from .catalogue import filter_catalogues
 
 
 def _serialize_attr_value(value):
+    """Convert array-like attribute values to plain Python objects for attrs."""
     if hasattr(value, "tolist"):
         return value.tolist()
     if hasattr(value, "item"):
@@ -13,6 +16,7 @@ def _serialize_attr_value(value):
         except ValueError:
             return value
     return value
+
 
 def generate_inference_data_local(
     event_data,

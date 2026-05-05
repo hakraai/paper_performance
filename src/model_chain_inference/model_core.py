@@ -1,3 +1,5 @@
+"""Core physical and statistical kernels used by the inference models."""
+
 import math
 import numpy as np
 
@@ -59,6 +61,7 @@ def etas_temporal_cumulative(t, c, p):
 
 
 def etas_spatial(r, d, q):
+    """Return the normalized ETAS spatial kernel for radial distance values."""
     r2 = r * r
     return ((q - 1) / (math.pi * d)) * ((d / (d + r2)) ** q)
 
@@ -69,6 +72,7 @@ def etas_spatial(r, d, q):
 
 
 def etas_productivity(M, K, a, M_ref):
+    """Return ETAS productivity as an exponential function of parent magnitude."""
     return K * np.exp(a * (M - M_ref))
 
 
@@ -83,6 +87,7 @@ def etas_productivity(M, K, a, M_ref):
 
 
 def etas_full(t, r, M, K, a, c, d, p, q, M_ref):
+    """Evaluate the full ETAS spatiotemporal triggering kernel."""
     pr = etas_productivity(M, K, a, M_ref)
     sp = etas_spatial(r, d, q)
     tm = etas_temporal(t, c, p)
@@ -90,6 +95,7 @@ def etas_full(t, r, M, K, a, c, d, p, q, M_ref):
 
 
 def etas_full_cumulative(t, r, M, K, a, c, d, p, q, M_ref):
+    """Evaluate the ETAS kernel integrated cumulatively over time."""
     # note that M should be relative to a reference (default: M=0)
     pr = etas_productivity(M, K, a, M_ref)
     sp = etas_spatial(r, d, q)
@@ -99,23 +105,28 @@ def etas_full_cumulative(t, r, M, K, a, c, d, p, q, M_ref):
 
 # gaussian smoother
 def r_smooth(r, sigma):
+    """Return Gaussian radial smoothing weights."""
     return np.exp(-(r**2) / (2.0 * sigma**2))
 
 
 # extreme threshold failure rate functions
 def extreme_threshold_failure(c, theta_0, theta_1):
+    """Return the cumulative ETF response for a covariate field."""
     return np.exp(theta_0 + theta_1 * c)
 
 
 def extreme_threshold_failure_rate(c, c_dot, theta_0, theta_1):
+    """Return the ETF rate response for a covariate and its derivative."""
     return theta_1 * c_dot * np.exp(theta_0 + theta_1 * c)
 
 
 def rs_activator(c, c_loc, c_scale):
+    """Return the smooth activation term."""
     return hyperbolic_tangent(c, 0.0, 1.0, c_loc, c_scale)
 
 
 def rs_exponential(c, c_loc, c_scale_trend, c_scale_activator):
+    """Return the rate-state exponential trend modulated by a smooth activator."""
     # this is the instantaneous rate of the RS model, Heimisson (8)
     # but with a hyperbolic tangent activator instead of a heaviside
     # c_loc = DeltaS_c - threshold
@@ -132,35 +143,42 @@ def rs_exponential(c, c_loc, c_scale_trend, c_scale_activator):
 
 
 def rs_exponential_dieterich(c, c_scale_trend):
+    """Return the Dieterich-style exponential trend term."""
     trend = np.exp(c / c_scale_trend)
     return trend
 
 
 def rs_rate(rs_exp, rs_exp_int, r, t_a):
+    """Return the Heimisson rate-state seismicity rate."""
     # Heimisson equation (1)
     return r * t_a * rs_exp / (rs_exp_int + t_a)
 
 
 def rs_rate_instantaneous(rs_exp, r):
+    """Return the instantaneous rate-state seismicity rate."""
     # Heimisson equation (8)
     return r * rs_exp
 
 
 # b-value functions
 def hyperbolic_tangent(c, b0, b1, loc, scale):
+    """Evaluate a bounded hyperbolic-tangent transition between two levels."""
     return 0.5 * ((b1 + b0) + (b1 - b0) * np.tanh((c - loc) / scale))
 
 
 def inverse_power_law(c, b0, loc, scale, pw):
+    """Evaluate an inverse power-law response."""
     return b0 + np.power((c - loc) / scale, -pw)
 
 
 def linear(c, b0, loc, scale):
+    """Evaluate a linear response around a reference location and scale."""
     return b0 + (c - loc) / scale
 
 
 # exponential distribution functions
 def ll_exponential(beta, dm):
+    """Return the exponential log-likelihood for magnitude increments."""
     # beta == ln(10)b
     # dm == m - m0
     return np.log(beta) - beta * dm  # log-likelihood
@@ -168,12 +186,14 @@ def ll_exponential(beta, dm):
 
 # subsurface functions
 def poroelastic_modulus(bulk_modulus, solid_modulus):
+    """Compute the combined poroelastic modulus from bulk and solid moduli."""
     # bulk_modulus = H_r
     # solid_modulus = H_s
     return 1 / (1 / bulk_modulus + 1 / solid_modulus)
 
 
 def biot_coefficient(compressibility, bulk_modulus, solid_modulus):
+    """Compute the Biot coefficient from compressibility and elastic moduli."""
     # note that in elastic media and in general: bulk_modulus = 1 / compressibility
     # however we may want to make a distintion between the two
     biot = compressibility * poroelastic_modulus(bulk_modulus, solid_modulus)
@@ -181,6 +201,7 @@ def biot_coefficient(compressibility, bulk_modulus, solid_modulus):
 
 
 def incremental_stress_high_compressibility(pressure_drop, gradient, poisson_ratio):
+    """Estimate incremental stress under the high-compressibility approximation."""
     # to arrive at the incremental stress, we need to multiply the following
     # by the biot coefficient
     gamma = (1 - 2 * poisson_ratio) / (2 - 2 * poisson_ratio)
@@ -188,6 +209,7 @@ def incremental_stress_high_compressibility(pressure_drop, gradient, poisson_rat
 
 
 def stress_susceptibility(gradient, poisson_ratio, bulk_modulus, solid_modulus):
+    """Compute the proportionality between pressure drop and stress change."""
     compressibility = 1.0 / bulk_modulus
     biot = biot_coefficient(compressibility, bulk_modulus, solid_modulus)
     gamma = (1 - 2 * poisson_ratio) / (2 - 2 * poisson_ratio)
@@ -195,6 +217,7 @@ def stress_susceptibility(gradient, poisson_ratio, bulk_modulus, solid_modulus):
 
 
 def susceptibility_modulator(bulk_modulus, solid_modulus, bulk_modulus_ref):
+    """Compute stress susceptibility relative to a reference bulk modulus."""
     compressibility_ref = 1.0 / bulk_modulus_ref
     compressibility = 1.0 / bulk_modulus
     biot = biot_coefficient(compressibility, bulk_modulus, solid_modulus)
@@ -205,6 +228,7 @@ def susceptibility_modulator(bulk_modulus, solid_modulus, bulk_modulus_ref):
 def incremental_stress(
     pressure_drop, gradient, poisson_ratio, bulk_modulus, solid_modulus
 ):
+    """Compute incremental stress from pressure drop and elastic properties."""
     ssusc = stress_susceptibility(gradient, poisson_ratio, bulk_modulus, solid_modulus)
     return ssusc * pressure_drop
 
@@ -212,6 +236,7 @@ def incremental_stress(
 def incremental_stress_from_strain(
     vertical_strain, gradient, poisson_ratio, bulk_modulus, solid_modulus
 ):
+    """Compute incremental stress from vertical strain and elastic properties."""
     # this allows a distinction between the bulk_modulus and the compressibility
     # that has cause the vertical strain
     pormod = poroelastic_modulus(bulk_modulus, solid_modulus)
@@ -220,12 +245,15 @@ def incremental_stress_from_strain(
 
 
 def vertical_strain(pressure_drop, compressibility):
+    """Compute vertical strain from pressure drop and compressibility."""
     return pressure_drop * compressibility
 
 
 def compaction(thickness, pressure_drop, compressibility):
+    """Compute compaction from thickness, pressure drop, and compressibility."""
     return thickness * pressure_drop * compressibility
 
 
 def radial_normal_weight(r, sigma, dim=2):
-    return np.exp(-0.5 * (r / sigma) ** 2) / np.sqrt(2 * np.pi * sigma**2) ** dim 
+    """Return Gaussian radial weights normalized for the requested dimension."""
+    return np.exp(-0.5 * (r / sigma) ** 2) / np.sqrt(2 * np.pi * sigma**2) ** dim

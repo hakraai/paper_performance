@@ -1,3 +1,5 @@
+"""Forecast-generation helpers for ETF and ETAS model outputs."""
+
 import numpy as np
 import xarray as xr
 
@@ -187,6 +189,7 @@ def forecast_etf_etas(
     disagg_dims=None,
     scale=True,
 ):
+    """Evaluate the ETF forecast and optionally augment it with ETAS scaling."""
 
     itp_dims = [v_id for v_id in parameters.data_vars if v_id in covariate.dims]
     if itp_dims:
@@ -236,6 +239,7 @@ def forecast_etf_etas(
 
 
 def apply_etas(forecast_bg, parameters, disagg_dims=None):
+    """Add ETAS offspring counts to a background forecast when configured."""
     if disagg_dims is None:
         disagg_dims = []
 
@@ -265,6 +269,7 @@ def apply_etas(forecast_bg, parameters, disagg_dims=None):
 
 
 def apply_mixers(to_be_mixed, parameters, disagg_dims=None, prefix="mix_"):
+    """Apply configured mixer weights to a forecast variable."""
     if disagg_dims is None:
         disagg_dims = []
     mixers = get_mixers(to_be_mixed, parameters, prefix)
@@ -283,6 +288,7 @@ def apply_mixers(to_be_mixed, parameters, disagg_dims=None, prefix="mix_"):
 def indexers_to_mixers(
     pars, ref_pars=None, index_prefix="idx_", mix_prefix="mix_", drop=False
 ):
+    """Convert discrete index selections into one-hot mixer arrays."""
     if ref_pars is None:
         ref_pars = pars
     indexed_dims = [id[len(index_prefix) :] for id in pars if index_prefix in id]
@@ -300,6 +306,7 @@ def indexers_to_mixers(
 def interpolators_to_mixers(
     pars, ref_pars=None, interp_prefix="itp_", mix_prefix="mix_", drop=False
 ):
+    """Convert interpolation coordinates into linear mixer arrays."""
     if ref_pars is None:
         ref_pars = pars
     itp_dims = [id[len(interp_prefix) :] for id in pars if interp_prefix in id]
@@ -321,6 +328,7 @@ def interpolators_to_mixers(
 def scale_interpolators(
     pars, ref_pars=None, interp_prefix="itp_", scaled_prefix="scl_"
 ):
+    """Map interpolation indices back to the coordinate values of reference parameters."""
     if ref_pars is None:
         ref_pars = pars
     itp_dims = [id[len(interp_prefix) :] for id in pars if interp_prefix in id]
@@ -336,6 +344,7 @@ def scale_interpolators(
 
 
 def get_mixers(variable, parameters, prefix="mix_"):
+    """Collect mixer variables that apply to the dimensions of a variable."""
     mixers = xr.Dataset(
         {
             id[len(prefix) :]: parameters[id]
@@ -348,6 +357,7 @@ def get_mixers(variable, parameters, prefix="mix_"):
 
 
 def apply_interpolators(var, post, interp_prefix="itp_", scaled_prefix="scl_"):
+    """Interpolate a variable using scaled coordinate values stored in a posterior dataset."""
     interp_dict = {
         v: post[f"{scaled_prefix}{v}"]
         for v in var.dims
@@ -372,6 +382,7 @@ def generate_testsuite_etf(
     disagg_dims=None,
     dsm_mode=None,
 ):
+    """Build spatial and temporal forecast-observation datasets for ETF testing."""
     epochs = filterset["timeframe"].values
     epochs = np.clip(
         epochs.astype("datetime64[ns]"),

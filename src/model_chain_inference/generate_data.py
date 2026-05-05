@@ -1,3 +1,5 @@
+"""Load raw Groningen resources into xarray and GeoPandas structures."""
+
 import h5py  # noqa: F401
 import rioxarray  # noqa: F401
 import pandas as pd
@@ -24,6 +26,7 @@ rticm_stress_file = Path("rticm_stress.h5")
 
 
 def get_polygon_gdf(path):
+    """Load the Groningen field outline and buffered variant as polygons."""
     groningen_outline = pd.read_csv(path / outline_file)
     groningen_polygon = Polygon(zip(groningen_outline.x, groningen_outline.y))
     groningen_polygon_data = {
@@ -47,6 +50,7 @@ def get_polygon_gdf(path):
 
 @lru_cache  # do not bother KNMI with repeated calls
 def get_catalogue_gdf(**pars):
+    """Fetch the KNMI event catalogue and return it as a projected GeoDataFrame."""
     def_pars = {
         "minlatitude": 53.00,
         "maxlatitude": 53.55,
@@ -85,12 +89,14 @@ def get_catalogue_gdf(**pars):
 
 
 def get_catalogue(**pars):
+    """Return the KNMI event catalogue as an xarray dataset without geometry."""
     eq_gdf = get_catalogue_gdf(**pars).dropna().drop(columns=["geometry"])
     eq_xr = xr.Dataset(eq_gdf)
     return eq_xr
 
 
 def get_grid(path):
+    """Load gridded reservoir inputs and derive support and measure variables."""
     pressure_pd = (
         pd.read_csv(path / pressure_file)
         .rename(columns={"X": "x", "Y": "y"})
@@ -191,6 +197,7 @@ def get_grid(path):
 
 
 def get_faults_gdf(path):
+    """Return processed fault pillar attributes as a GeoDataFrame."""
     fxr = get_faults(path)
 
     return gpd.GeoDataFrame(fxr.to_dataframe(), crs=28992).drop(
@@ -200,6 +207,7 @@ def get_faults_gdf(path):
 
 @lru_cache  # cache the result
 def get_faults(path):
+    """Load fault pillar data and derive geometry, thickness, and area attributes."""
     cnx = sqlite3.connect(path / faults_file)
     fault_data = pd.read_sql_query("SELECT * FROM pillar_geom", cnx)
     cnx.commit()

@@ -1,3 +1,5 @@
+"""Testsuite construction and diagnostic orchestration for calibrated models."""
+
 import arviz as az
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -12,6 +14,7 @@ def prepare_testsuite(
     rng=None,
     n_posterior_samples=None,
 ):
+    """Build a forecast-vs-observation testsuite from posterior samples and inputs."""
     if rng is None:
         rng = 42
     if n_posterior_samples is None:
@@ -64,6 +67,7 @@ def analyze_and_display(
     groningen_contour,
     plotting_timeframe,
 ):
+    """Run the standard diagnostics and render the main investigation plots."""
     title = f"m:{model_id} - c:{run_id} - f:{purpose}"
     spatial_ds = mci.create_spatial_ds(testsuite)
     temporal_ds = mci.create_temporal_ds(testsuite)
@@ -113,6 +117,7 @@ def analyze_and_display(
 
 
 def perf_assessment(testsuite, cell_covering, sample_size=10_000, rng=None):
+    """Run temporal, multiscale spatial, and adaptive spatial assessments."""
     # temporal testing
     temporal_ds = mci.create_temporal_ds(testsuite)
     time_perf_stats = mci.temporal_performance_assessment(
