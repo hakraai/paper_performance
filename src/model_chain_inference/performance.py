@@ -2,7 +2,6 @@
 
 import numpy as np
 import xarray as xr
-import scipy.stats as st
 from .statistics import (
     get_cumulative_probabilities_poisson,
     get_default_fractiles,
@@ -12,7 +11,6 @@ from .model_forecast import (
     get_realisation,
     generate_closed_time_series,
 )
-import chaintools.tools_grid as tgrid
 
 
 def generate_simulations(observed_counts, expected_counts, sample_size, rng=None):
@@ -171,138 +169,6 @@ def generate_adaptive_cell_covering(ms_spatial_ds, ms_mode=None, threshold=None)
     cell_covering.attrs["threshold"] = threshold
 
     return cell_covering
-
-
-def performance_assessment(
-    suite,
-    sample_size=10_000,
-    coarsening_factors=None,
-    rng=None,
-    q=None,
-    spatial_dims=None,
-):
-    """Run count and coarsened spatial performance assessment for a testsuite."""
-    if spatial_dims is None:
-        spatial_dims = ["loc"]
-    if coarsening_factors is None:
-        coarsening_factors = [1, 2, 4, 8, 16, 32]
-    if q is None:
-        q = get_default_fractiles()
-
-    # load data
-    observed_counts = suite["spatial/observation"].load()
-    expected_counts = suite["spatial/forecast/mean"].load()
-
-    # summarize total counts
-    perfass = count_statistics(observed_counts, expected_counts, q)
-
-    # generate simulations
-    simulations = generate_simulations(
-        observed_counts, expected_counts, sample_size, rng
-    )
-
-    local_suite = xr.Dataset(
-        {
-            "forecast": expected_counts,
-            "observation": observed_counts,
-            "simulations": simulations,
-            "cell_count": xr.ones_like(expected_counts),
-        }
-    )
-
-    metrics = []
-    coarsened_data = []
-    for c_fac in coarsening_factors:
-        print(f"COARSENING_FACTOR: {c_fac}")
-        cc = tgrid.coarsen_stacked(local_suite, c_fac)
-        cc = cc.where(cc["forecast"] > 0.0, drop=True)
-        simulated_counts = cc["simulations"]
-        observed_counts = cc["observation"]
-        expected_counts = cc["forecast"]
-
-        metrics_c = performance_statistics(
-            observed_counts,
-            expected_counts,
-            simulated_counts,
-            q,
-            spatial_dims,
-            rng=rng,
-            sample_size=sample_size,
-        )
-        metrics_c = metrics_c.expand_dims({"coarsening_factor": [c_fac]})
-
-        metrics.append(metrics_c)
-
-        # determine cdf for each bin
-        n_obs = observed_counts.sum()
-        n_exp = expected_counts.sum()
-        expected_counts_normalized = (n_obs / n_exp) * expected_counts
-        cdf_clip = get_poisson_cdf_clip(observed_counts, expected_counts_normalized)
-
-        plotting_dataset_c = xr.Dataset(
-            {
-                "rates": expected_counts,
-                "observations": observed_counts,
-                "cdf_clip": cdf_clip,
-            }
-        )
-        plotting_dataset_c = plotting_dataset_c.to_array("type").expand_dims(
-            {"coarsening_factor": [c_fac]}
-        )
-        coarsened_data.append(plotting_dataset_c)
-
-    perfass = perfass.merge(xr.concat(metrics, dim="coarsening_factor"))
-
-    return perfass, coarsened_data
-
-
-def count_statistics(observed_counts, expected_counts, q=None):
-    """
-    Compute count statistics for observed and expected counts.
-    Parameters
-    ----------
-    observed_counts : xr.DataArray
-        Observed counts, e.g. from a catalogue
-    expected_counts : xr.DataArray
-        Expected counts, e.g. from a forecast
-    q : xr.DataArray, optional
-        Quantiles to compute, e.g. from get_default_fractiles(), by default None
-    Returns
-    -------
-    xr.Dataset
-        Dataset containing count statistics, including observed counts, expected counts,
-        count fractiles, p-values, and test results
-    """
-    if q is None:
-        q = get_default_fractiles()
-
-    n_observed = observed_counts.sum()
-    n_expected = expected_counts.sum()
-    n_obs_exp = xr.DataArray([n_observed, n_expected], dims="simulation_type")
-
-    # p_tight is the p in the p-interval corresponding to n_obs that is closest to 0.5
-    # probabilities
-    sf_inc = xr.apply_ufunc(st.poisson.sf, n_observed - 1, n_obs_exp)
-    sf = xr.apply_ufunc(st.poisson.sf, n_observed, n_obs_exp)
-    p_tight = xr.apply_ufunc(np.clip, 0.5, sf_inc, sf)
-
-    # determine count values that includes the fraction q in its cumulative
-    # probability range
-    count_fractiles = xr.apply_ufunc(st.poisson.ppf, q, n_obs_exp)
-    on_or_above_lower = n_observed >= count_fractiles.isel({"fractile": 0})
-    on_or_below_upper = n_observed <= count_fractiles.isel({"fractile": -1})
-    test_result = on_or_above_lower & on_or_below_upper
-
-    perfass = xr.Dataset(
-        {
-            "count": n_observed,
-            "count_fractiles": count_fractiles,
-            "count_p_value": p_tight,
-            "count_test_result": test_result,
-        }
-    )
-
-    return perfass
 
 
 def get_poisson_cdf_clip(observed_counts, expected_counts):
@@ -781,3 +647,27 @@ def generate_cell_covering(
         ms_spatial_ds, ms_mode=ms_mode, threshold=threshold
     )
     return cell_covering
+
+
+__all__ = [
+    "adaptive_spatial_performance_assessment",
+    "add_multiscale_index",
+    "cell_statistics",
+    "create_adaptive_cell_covering",
+    "create_spatial_ds",
+    "create_temporal_ds",
+    "generate_adaptive_cell_covering",
+    "generate_cell_covering",
+    "generate_simulations",
+    "get_combined_dimensions",
+    "get_poisson_cdf_clip",
+    "multiscale_spatial_performance_assessment",
+    "observed_entropy",
+    "performance_statistics",
+    "simulate_catalogues_fixed_size",
+    "simulate_catalogues_poisson",
+    "stack_and_align",
+    "temporal_performance_assessment",
+    "xr_synthetic_catalogues",
+    "xr_synthetic_catalogues_normalized",
+]

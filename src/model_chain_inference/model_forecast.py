@@ -285,64 +285,6 @@ def apply_mixers(to_be_mixed, parameters, disagg_dims=None, prefix="mix_"):
     return to_be_mixed
 
 
-def indexers_to_mixers(
-    pars, ref_pars=None, index_prefix="idx_", mix_prefix="mix_", drop=False
-):
-    """Convert discrete index selections into one-hot mixer arrays."""
-    if ref_pars is None:
-        ref_pars = pars
-    indexed_dims = [id[len(index_prefix) :] for id in pars if index_prefix in id]
-    for dim in indexed_dims:
-        indexer = pars[index_prefix + dim]
-        mixer = xr.zeros_like(ref_pars[dim] * indexer)
-        mixer[{dim: indexer}] = 1.0
-        pars[mix_prefix + dim] = mixer
-        if drop:
-            del pars[index_prefix + dim]
-
-    return pars
-
-
-def interpolators_to_mixers(
-    pars, ref_pars=None, interp_prefix="itp_", mix_prefix="mix_", drop=False
-):
-    """Convert interpolation coordinates into linear mixer arrays."""
-    if ref_pars is None:
-        ref_pars = pars
-    itp_dims = [id[len(interp_prefix) :] for id in pars if interp_prefix in id]
-    for dim in itp_dims:
-        interpolator = pars[interp_prefix + dim]
-        index = np.floor(interpolator).astype(int)
-        w1 = interpolator - index
-        w0 = 1 - w1
-        mixer = xr.zeros_like(ref_pars[dim] * interpolator)
-        mixer[{dim: index}] = w0
-        mixer[{dim: index + 1}] = w1
-        pars[mix_prefix + dim] = mixer
-        if drop:
-            del pars[interp_prefix + dim]
-
-    return pars
-
-
-def scale_interpolators(
-    pars, ref_pars=None, interp_prefix="itp_", scaled_prefix="scl_"
-):
-    """Map interpolation indices back to the coordinate values of reference parameters."""
-    if ref_pars is None:
-        ref_pars = pars
-    itp_dims = [id[len(interp_prefix) :] for id in pars if interp_prefix in id]
-    for dim in itp_dims:
-        interpolator = pars[interp_prefix + dim]
-        coords = ref_pars[dim]
-        coords = coords.assign_coords({dim: np.arange(coords.size).astype(float)})
-        pars[scaled_prefix + dim] = coords.interp({dim: interpolator}).reset_coords(
-            drop=True
-        )
-
-    return pars
-
-
 def get_mixers(variable, parameters, prefix="mix_"):
     """Collect mixer variables that apply to the dimensions of a variable."""
     mixers = xr.Dataset(
@@ -354,18 +296,6 @@ def get_mixers(variable, parameters, prefix="mix_"):
     ).reset_coords()
 
     return mixers
-
-
-def apply_interpolators(var, post, interp_prefix="itp_", scaled_prefix="scl_"):
-    """Interpolate a variable using scaled coordinate values stored in a posterior dataset."""
-    interp_dict = {
-        v: post[f"{scaled_prefix}{v}"]
-        for v in var.dims
-        if f"{interp_prefix}{v}" in post
-    }
-    if len(interp_dict) == 0:
-        return var
-    return var.interp(interp_dict).reset_coords(list(interp_dict.keys()), drop=True)
 
 
 def generate_testsuite_etf(
@@ -498,3 +428,15 @@ def generate_closed_time_series(
     ).sortby(datetime_dim)
 
     return data_inside
+
+
+__all__ = [
+    "apply_etas",
+    "apply_mixers",
+    "forecast_etf_etas",
+    "generate_closed_time_series",
+    "generate_forecast_etf",
+    "generate_temporal_forecast_etf",
+    "generate_testsuite_etf",
+    "get_mixers",
+]

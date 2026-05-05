@@ -196,15 +196,6 @@ def get_grid(path):
     return covdat
 
 
-def get_faults_gdf(path):
-    """Return processed fault pillar attributes as a GeoDataFrame."""
-    fxr = get_faults(path)
-
-    return gpd.GeoDataFrame(fxr.to_dataframe(), crs=28992).drop(
-        ["FAULT_ID", "PILLAR_ID"], axis=1
-    )
-
-
 @lru_cache  # cache the result
 def get_faults(path):
     """Load fault pillar data and derive geometry, thickness, and area attributes."""
@@ -271,3 +262,12 @@ def get_faults(path):
     fp = fp.rename({"X": "x", "Y": "y", "Z": "z"}).rio.write_crs(28992)
 
     return fp
+
+
+__all__ = [
+    "get_catalogue",
+    "get_catalogue_gdf",
+    "get_faults",
+    "get_grid",
+    "get_polygon_gdf",
+]

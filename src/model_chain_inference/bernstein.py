@@ -68,3 +68,9 @@ def bernstein_partition(values, degree, fractiles=True, dim=None):
     )
 
     return b_weights
+
+
+__all__ = [
+    "bernstein_partition",
+    "bernstein_partition_core",
+]

@@ -86,115 +86,6 @@ def make_test_axis(
     ax.set_ylabel(ylabel)
 
 
-def plot_test_results(ds, title=None, dim="level", **kwargs):
-    """Plot likelihood test summaries across levels and likelihood functions."""
-    nx = ds.sizes[dim]
-    ny = ds.sizes["likelihood_function"]
-    fig, axes = plt.subplots(ny, nx, **kwargs)
-    for ix in range(nx):
-        for iy in range(ny):
-            ax = axes[iy, ix]
-            ds_local = ds.isel(**{dim: ix, "likelihood_function": iy})
-            ll = ds_local["ll_observed"]
-            q = ds_local["ll_fractiles"].transpose(..., "fractile")
-            test_result = ds_local["ll_test_result"]
-            x_label = None
-            y_label = None
-            if iy == ny - 1:
-                if dim in ds_local:
-                    xlabel = ds_local[dim].item()
-                else:
-                    xlabel = ix
-                x_label = f"{dim} = {xlabel}"
-            if ix == 0:
-                y_label = ds_local["likelihood_function"].item()
-            make_test_axis(ax, ll, q, test_result, x_label, y_label)
-            # Set y-label horizontal and adjust space
-            if y_label is not None:
-                ax.set_ylabel(y_label, rotation=0, labelpad=30, ha="right", va="center")
-    fig.suptitle(title)
-    fig.tight_layout(rect=[0, 0, 1, 0.97])
-    plt.show()
-
-
-def plot_rates(suite, pol):
-    """Plot forecast rates and a normalized synthetic counterpart over the field."""
-    fc = suite["spatial/forecast/mean"]
-    if "strain_mode" in fc.dims:
-        fc = fc.isel["strain_mode"] = -1
-    if "bernstein_index" in fc.dims:
-        fc = fc.sum("bernstein_index")
-    if "etas_generation" in fc.dims:
-        fc = fc.sum("etas_generation")
-    rates = fc.unstack("loc").sortby(["x", "y"]).reset_coords(drop=True)
-
-    fig, axes = plt.subplots(1, 2, figsize=(8, 4), sharey=True)
-
-    rates.T.plot(ax=axes[0])
-    postprocess_ax(axes[0], pol)
-
-    (
-        mci.catalogue.xr_synthetic_catalogues_normalized(rates, 15, sample_size=10000)
-        .where(rates > 0)
-        .mean("catalogue")
-        .T.plot(ax=axes[1])
-    )
-    postprocess_ax(axes[1], pol)
-
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_test(perfass, title=None):
-    """Plot the main likelihood test panel from performance assessment output."""
-    plot_test_results(perfass[0], title)
-
-
-def plot_spatial_coarsening(perfass, pol, title=None):
-    """Visualize coarsened spatial forecasts, observations, and CDF values."""
-    fig, axes = plt.subplots(
-        ncols=len(perfass[1]),
-        nrows=3,
-        figsize=(2 * len(perfass[1]), 8),
-        sharex=True,
-        sharey=True,
-    )
-    for i, ds in enumerate(perfass[1]):
-        for j in range(3):
-            ax = axes[j, i] if len(perfass[1]) > 1 else axes[j]
-            data = ds.isel(type=j).squeeze().reset_coords(drop=True)
-            if j < 2:
-                data = data / data.max()
-            data = data.unstack("loc").sortby(["x", "y"]).T
-            data.plot(ax=ax, add_colorbar=False, vmin=0, vmax=1)
-            mci.postprocess_ax(ax, pol)
-    if title is not None:
-        fig.suptitle(title)
-    plt.tight_layout(rect=[0, 0, 1, 0.98])
-    plt.show()
-
-
-def plot_spatial_statistics(perf_stats, pol, title=None):
-    """Plot spatial summary statistics by multiscale level."""
-    g = (
-        perf_stats["spatial_statistics"]
-        .sel(
-            type=[
-                "normalized_observations",
-                "normalized_forecast",
-                "cdf_clip",
-            ]
-        )
-        .plot(x="x", y="y", col="level", row="type", add_colorbar=False)
-    )
-    if title is not None:
-        g.fig.subplots_adjust(top=0.9)
-        g.fig.suptitle(title)
-    mci.postprocess_facets(g, pol)
-    plt.tight_layout(rect=[0, 0, 1, 0.98])
-    plt.show()
-
-
 def plot_time_series(
     suite,
     title,
@@ -254,38 +145,6 @@ def plot_time_series(
     ax.set_title(title)
     ax.set_xlabel("Time")
     ax.set_ylabel("Annual rate/count")
-
-
-def plot_bs_contrib(bs_dict, ax=None, yerr=False):
-    """Plot Bernstein component contributions to background event counts."""
-    if ax is None:
-        ax = plt.subplots()[1]
-    ch = (
-        xr.Dataset(
-            {
-                k: v["posterior"]["event_count_bg"].assign_coords(
-                    {"bernstein_index": v["constant_data"]["bernstein_index"]}
-                )
-                for k, v in bs_dict.items()
-            }
-        )
-        .fillna(0.0)
-        .to_array("bernstein_degree")
-    )
-    col = ch["bernstein_degree"]
-    weight_counts = ch.mean(["draw", "chain"])
-    sd = ch.cumsum("bernstein_index").std(["draw", "chain"])
-    width = 0.7
-    bottom = xr.zeros_like(weight_counts.isel(bernstein_index=0))
-
-    for bb in ch["bernstein_index"].values:
-        weight_count = weight_counts.sel(bernstein_index=bb)
-        sd_part = sd.sel(bernstein_index=bb)
-        if yerr:
-            ax.bar(col, weight_count, width, yerr=sd_part, label=bb, bottom=bottom)
-        else:
-            ax.bar(col, weight_count, width, label=bb, bottom=bottom)
-        bottom += weight_count
 
 
 def plot_time_realisation(realisation, ax, label=None, c="k", final_date=None):
@@ -374,3 +233,14 @@ def plot_time_forecast(
             step="post",
             label=label[2],
         )
+
+
+__all__ = [
+    "create_contour_patch",
+    "make_test_axis",
+    "plot_time_forecast",
+    "plot_time_realisation",
+    "plot_time_series",
+    "postprocess_ax",
+    "postprocess_facets",
+]

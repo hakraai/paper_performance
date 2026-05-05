@@ -2,7 +2,6 @@
 
 import arviz as az
 import xarray as xr
-import matplotlib.pyplot as plt
 import model_chain_inference as mci
 
 
@@ -58,64 +57,6 @@ def prepare_testsuite(
     return testsuite
 
 
-def analyze_and_display(
-    model_id,
-    testsuite,
-    run_id,
-    purpose,
-    cell_covering,
-    groningen_contour,
-    plotting_timeframe,
-):
-    """Run the standard diagnostics and render the main investigation plots."""
-    title = f"m:{model_id} - c:{run_id} - f:{purpose}"
-    spatial_ds = mci.create_spatial_ds(testsuite)
-    temporal_ds = mci.create_temporal_ds(testsuite)
-    ms_spatial_ds = mci.add_multiscale_index(spatial_ds)
-    ms_perf_stats = mci.multiscale_spatial_performance_assessment(ms_spatial_ds)
-
-    adaptive_perf_stats = mci.adaptive_spatial_performance_assessment(
-        ms_spatial_ds, cell_covering
-    )
-    time_perf_stats = mci.temporal_performance_assessment(temporal_ds)
-
-    mci.plot_spatial_statistics(
-        ms_perf_stats.thin(level=2), groningen_contour, title=title
-    )
-    g = (
-        adaptive_perf_stats["spatial_statistics"]
-        .sel(
-            type=[
-                "normalized_observation_density",
-                "normalized_forecast_density",
-                "cdf_clip",
-            ]
-        )
-        .plot(x="x", y="y", col="type")
-    )
-    mci.postprocess_facets(g, groningen_contour)
-    mci.plot_test_results(ms_perf_stats.thin(level=2), dim="level", title=title)
-    # mci.plot_spatial_coarsening(perfass, groningen_contour, title)
-    # mci.plot_test(perfass, title)
-    mci.plot_test_results(
-        xr.concat(
-            [time_perf_stats, adaptive_perf_stats],
-            dim="test",
-        ).assign_coords(
-            test=["temporal", "spatial - adaptive"],
-        ),
-        title=title,
-        dim="test",
-    )
-    mci.plot_time_series(
-        testsuite,
-        title,
-        timeframe=plotting_timeframe,
-        top=40,
-    )
-    plt.show()
-
-
 def perf_assessment(testsuite, cell_covering, sample_size=10_000, rng=None):
     """Run temporal, multiscale spatial, and adaptive spatial assessments."""
     # temporal testing
@@ -149,3 +90,9 @@ def perf_assessment(testsuite, cell_covering, sample_size=10_000, rng=None):
     out_sa = adaptive_perf_stats
 
     return out_t, out_s, out_sa
+
+
+__all__ = [
+    "perf_assessment",
+    "prepare_testsuite",
+]

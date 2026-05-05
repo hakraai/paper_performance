@@ -76,112 +76,16 @@ def etas_productivity(M, K, a, M_ref):
     return K * np.exp(a * (M - M_ref))
 
 
-# def etas_temporal(t, M, K, a, c, p, cumulative = False):
-#     # note that M should be relative to a reference (default: M=0)
-#     prod = etas_productivity(M, K, a)
-#     if cumulative:
-#         g = etas_temporal_cumulative(t, c, p)
-#     else:
-#         g = etas_temporal(t, c, p)
-#     return prod * g
-
-
-def etas_full(t, r, M, K, a, c, d, p, q, M_ref):
-    """Evaluate the full ETAS spatiotemporal triggering kernel."""
-    pr = etas_productivity(M, K, a, M_ref)
-    sp = etas_spatial(r, d, q)
-    tm = etas_temporal(t, c, p)
-    return pr * sp * tm
-
-
-def etas_full_cumulative(t, r, M, K, a, c, d, p, q, M_ref):
-    """Evaluate the ETAS kernel integrated cumulatively over time."""
-    # note that M should be relative to a reference (default: M=0)
-    pr = etas_productivity(M, K, a, M_ref)
-    sp = etas_spatial(r, d, q)
-    tm = etas_temporal_cumulative(t, c, p)
-    return pr * sp * tm
-
-
-# gaussian smoother
-def r_smooth(r, sigma):
-    """Return Gaussian radial smoothing weights."""
-    return np.exp(-(r**2) / (2.0 * sigma**2))
-
-
 # extreme threshold failure rate functions
 def extreme_threshold_failure(c, theta_0, theta_1):
     """Return the cumulative ETF response for a covariate field."""
     return np.exp(theta_0 + theta_1 * c)
 
 
-def extreme_threshold_failure_rate(c, c_dot, theta_0, theta_1):
-    """Return the ETF rate response for a covariate and its derivative."""
-    return theta_1 * c_dot * np.exp(theta_0 + theta_1 * c)
-
-
-def rs_activator(c, c_loc, c_scale):
-    """Return the smooth activation term."""
-    return hyperbolic_tangent(c, 0.0, 1.0, c_loc, c_scale)
-
-
-def rs_exponential(c, c_loc, c_scale_trend, c_scale_activator):
-    """Return the rate-state exponential trend modulated by a smooth activator."""
-    # this is the instantaneous rate of the RS model, Heimisson (8)
-    # but with a hyperbolic tangent activator instead of a heaviside
-    # c_loc = DeltaS_c - threshold
-    # c_scale_trend = 1 / (Asigma_0),
-    # c_scale_activator -> new parameter, controls the width of the activator,`
-    # original is retrieved when c_scale_activator -> 0
-    # however this should be avoided
-    # ~ exp(theta_0 + theta_1 * c) form:
-    # ~ theta_0 = - (DeltaS_c/(Asigma_0))
-    # ~ theta_1 = (1/Asigma_0)
-    activator = rs_activator(c, c_loc, c_scale_activator)
-    trend = np.exp((c - c_loc) / c_scale_trend)
-    return activator * trend
-
-
-def rs_exponential_dieterich(c, c_scale_trend):
-    """Return the Dieterich-style exponential trend term."""
-    trend = np.exp(c / c_scale_trend)
-    return trend
-
-
-def rs_rate(rs_exp, rs_exp_int, r, t_a):
-    """Return the Heimisson rate-state seismicity rate."""
-    # Heimisson equation (1)
-    return r * t_a * rs_exp / (rs_exp_int + t_a)
-
-
-def rs_rate_instantaneous(rs_exp, r):
-    """Return the instantaneous rate-state seismicity rate."""
-    # Heimisson equation (8)
-    return r * rs_exp
-
-
 # b-value functions
 def hyperbolic_tangent(c, b0, b1, loc, scale):
     """Evaluate a bounded hyperbolic-tangent transition between two levels."""
     return 0.5 * ((b1 + b0) + (b1 - b0) * np.tanh((c - loc) / scale))
-
-
-def inverse_power_law(c, b0, loc, scale, pw):
-    """Evaluate an inverse power-law response."""
-    return b0 + np.power((c - loc) / scale, -pw)
-
-
-def linear(c, b0, loc, scale):
-    """Evaluate a linear response around a reference location and scale."""
-    return b0 + (c - loc) / scale
-
-
-# exponential distribution functions
-def ll_exponential(beta, dm):
-    """Return the exponential log-likelihood for magnitude increments."""
-    # beta == ln(10)b
-    # dm == m - m0
-    return np.log(beta) - beta * dm  # log-likelihood
 
 
 # subsurface functions
@@ -198,31 +102,12 @@ def biot_coefficient(compressibility, bulk_modulus, solid_modulus):
     # however we may want to make a distintion between the two
     biot = compressibility * poroelastic_modulus(bulk_modulus, solid_modulus)
     return biot
-
-
-def incremental_stress_high_compressibility(pressure_drop, gradient, poisson_ratio):
-    """Estimate incremental stress under the high-compressibility approximation."""
-    # to arrive at the incremental stress, we need to multiply the following
-    # by the biot coefficient
-    gamma = (1 - 2 * poisson_ratio) / (2 - 2 * poisson_ratio)
-    return pressure_drop * gradient * gamma
-
-
 def stress_susceptibility(gradient, poisson_ratio, bulk_modulus, solid_modulus):
     """Compute the proportionality between pressure drop and stress change."""
     compressibility = 1.0 / bulk_modulus
     biot = biot_coefficient(compressibility, bulk_modulus, solid_modulus)
     gamma = (1 - 2 * poisson_ratio) / (2 - 2 * poisson_ratio)
     return gradient * gamma * biot
-
-
-def susceptibility_modulator(bulk_modulus, solid_modulus, bulk_modulus_ref):
-    """Compute stress susceptibility relative to a reference bulk modulus."""
-    compressibility_ref = 1.0 / bulk_modulus_ref
-    compressibility = 1.0 / bulk_modulus
-    biot = biot_coefficient(compressibility, bulk_modulus, solid_modulus)
-    biot_ref = biot_coefficient(compressibility_ref, bulk_modulus_ref, solid_modulus)
-    return biot / biot_ref
 
 
 def incremental_stress(
@@ -233,27 +118,21 @@ def incremental_stress(
     return ssusc * pressure_drop
 
 
-def incremental_stress_from_strain(
-    vertical_strain, gradient, poisson_ratio, bulk_modulus, solid_modulus
-):
-    """Compute incremental stress from vertical strain and elastic properties."""
-    # this allows a distinction between the bulk_modulus and the compressibility
-    # that has cause the vertical strain
-    pormod = poroelastic_modulus(bulk_modulus, solid_modulus)
-    gamma = (1 - 2 * poisson_ratio) / (2 - 2 * poisson_ratio)
-    return vertical_strain * gradient * gamma * pormod
-
-
-def vertical_strain(pressure_drop, compressibility):
-    """Compute vertical strain from pressure drop and compressibility."""
-    return pressure_drop * compressibility
-
-
-def compaction(thickness, pressure_drop, compressibility):
-    """Compute compaction from thickness, pressure drop, and compressibility."""
-    return thickness * pressure_drop * compressibility
-
-
 def radial_normal_weight(r, sigma, dim=2):
     """Return Gaussian radial weights normalized for the requested dimension."""
     return np.exp(-0.5 * (r / sigma) ** 2) / np.sqrt(2 * np.pi * sigma**2) ** dim
+
+
+__all__ = [
+    "biot_coefficient",
+    "etas_productivity",
+    "etas_spatial",
+    "etas_temporal",
+    "etas_temporal_cumulative",
+    "extreme_threshold_failure",
+    "hyperbolic_tangent",
+    "incremental_stress",
+    "poroelastic_modulus",
+    "radial_normal_weight",
+    "stress_susceptibility",
+]

@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import logging
 import sys
-from contextlib import contextmanager
 from typing import Iterable, Iterator, TypeVar
 
 from tqdm.auto import tqdm
-from tqdm.contrib.logging import logging_redirect_tqdm
 
 
 T = TypeVar("T")
@@ -33,10 +31,3 @@ def get_logger(name: str | None = None) -> logging.Logger:
 
 def progress(iterable: Iterable[T], *, desc: str, total: int | None = None, leave: bool = False) -> Iterator[T]:
     return tqdm(iterable, desc=desc, total=total, dynamic_ncols=True, leave=leave)
-
-
-@contextmanager
-def logging_progress() -> Iterator[None]:
-    root_logger = logging.getLogger(LOGGER_NAME)
-    with logging_redirect_tqdm(loggers=[root_logger]):
-        yield

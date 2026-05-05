@@ -173,19 +173,6 @@ def get_cache_mode(args: argparse.Namespace) -> str:
     return "refresh" if args.force else args.cache
 
 
-def should_write_output(path: Path, cache_mode: str) -> bool:
-    if not path.exists():
-        return True
-    if cache_mode == "refresh":
-        return True
-    if cache_mode == "reuse":
-        LOGGER.info("cached %s", path)
-        return False
-    raise FileExistsError(
-        f"Refusing to overwrite existing output: {path}. Use --force or --cache refresh to replace it, or --cache reuse to keep it."
-    )
-
-
 def get_idata_path(path: Path, experiment: str, perspective: str, model: str) -> Path:
     return path / f"model_calibration-{experiment}-{perspective}-{model}.h5"
 
@@ -452,14 +439,6 @@ def save_assessment(
             }
         )
     ).to_netcdf(path, engine="h5netcdf")
-
-
-def maybe_render_figure(path: Path, cache_mode: str, render: Callable[[], None]) -> None:
-    if not should_write_output(path, cache_mode):
-        return
-    render()
-
-
 def maybe_render_formats(
     figpath: Path,
     base_name: str,

@@ -1,7 +1,5 @@
 """Catalogue filtering and histogram helpers for forecast evaluation."""
 
-import xarray as xr
-
 
 def catalogue_filter(cat, filterset, datetime_dim="datetime", size_dim="magnitude"):
     """Return a boolean mask for catalogue entries that satisfy a filter set."""
@@ -44,39 +42,6 @@ def filter_catalogues(event_data, filterset, filterset_etas, event_id):
     return eqcat, eqcat_parent
 
 
-def get_realisation_temporal(
-    covariate, eqcat, filterset, event_dim="event_id", datetime_dim="datetime"
-):
-    """Count filtered events per temporal interval up to each covariate timestamp."""
-    realisation_temporal = (
-        (
-            catalogue_filter(eqcat, filterset)
-            & (eqcat[datetime_dim] <= covariate[datetime_dim])
-        )
-        .sum(event_dim)
-        .diff(datetime_dim, label="lower")
-    )
-
-    return realisation_temporal
-
-
-def get_realisation_spatial(covariate, eqcat, filterset, event_id="event_id"):
-    """Count filtered events per spatial cell at the covariate timestamps."""
-    realisation_spatial = (
-        (
-            catalogue_filter(eqcat, filterset)
-            & (eqcat["x_grid"] == covariate["x"])
-            & (eqcat["y_grid"] == covariate["y"])
-            & (eqcat["datetime"] <= covariate["datetime"])
-        )
-        .sum(event_id)
-        .diff("datetime", label="lower")
-        .squeeze("datetime")
-    )
-
-    return realisation_spatial
-
-
 def get_realisation(
     grid,
     eqcat,
@@ -117,48 +82,8 @@ def get_realisation(
     return realisation
 
 
-def compute_event_histograms(eqcat, filterset, grid_data, magnitudes, event_id):
-    """Assemble spatial, temporal, and magnitude histograms for a filtered catalogue."""
-    spatial = compute_spatial_histogram(eqcat, filterset, grid_data, event_id)
-    temporal = compute_temporal_histogram(eqcat, filterset, grid_data, event_id)
-    magnitude = compute_magnitude_histogram(eqcat, filterset, magnitudes, event_id)
-
-    return xr.Dataset(
-        {
-            "histogram_spatial": spatial,
-            "histogram_temporal": temporal,
-            "histogram_magnitude": magnitude,
-        }
-    )
-
-
-def compute_magnitude_histogram(eqcat, filterset, magnitudes, event_dim):
-    """Compute non-cumulative counts over magnitude bins for filtered events."""
-    filt = catalogue_filter(eqcat, filterset)
-    magnitude = (filt & (eqcat["magnitude"] >= magnitudes)).sum(event_dim).diff(
-        "magnitude", label="lower"
-    ) * (-1)
-
-    return magnitude
-
-
-def compute_temporal_histogram(eqcat, filterset, grid_data, event_dim):
-    """Compute non-cumulative counts over the time bins in a grid dataset."""
-    filt = catalogue_filter(eqcat, filterset)
-    temporal = (
-        (filt & (eqcat["datetime"] <= grid_data["datetime"]))
-        .sum(event_dim)
-        .diff("datetime", label="lower")
-    )
-
-    return temporal
-
-
-def compute_spatial_histogram(eqcat, filterset, grid_data, event_dim):
-    """Compute counts over spatial grid cells for filtered catalogue entries."""
-    filt = catalogue_filter(eqcat, filterset)
-    spatial = (
-        filt & (eqcat["x_grid"] == grid_data["x"]) & (eqcat["y_grid"] == grid_data["y"])
-    ).sum(event_dim)
-
-    return spatial
+__all__ = [
+    "catalogue_filter",
+    "filter_catalogues",
+    "get_realisation",
+]

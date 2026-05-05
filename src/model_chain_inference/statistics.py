@@ -44,69 +44,6 @@ def get_cumulative_probabilities_poisson(observations, mean):
     return ds
 
 
-def get_cumulative_probabilities_nbinom(observations, mean, variance):
-    """
-    Compute exceedance probabilities for negative binomial distribution
-    Parameters
-    ----------
-    observations : xr.DataArray
-        Observations for which to compute exceedance probabilities
-    mean : xr.DataArray
-        Mean of the negative binomial distribution
-    variance : xr.DataArray
-        Variance of the negative binomial distribution
-    Returns
-    -------
-    xr.DataArray
-        DataArray containing the exceedance probabilities
-    """
-
-    sf = xr.apply_ufunc(
-        st.nbinom.sf,
-        observations,  # exclusive sf: probability of exceeding observation value
-        *nbinom_pars_from_mean_var(mean, mean + variance),
-    )
-
-    sf_inclusive = xr.apply_ufunc(
-        st.nbinom.sf,
-        observations - 1,  # inclusive sf: probability of observation value or higher
-        *nbinom_pars_from_mean_var(mean, mean + variance),
-    )
-
-    cdf = xr.apply_ufunc(
-        st.nbinom.cdf,
-        observations,  # inclusive: probability of observation value or lower
-        *nbinom_pars_from_mean_var(mean, mean + variance),
-    )
-
-    cdf_exclusive = xr.apply_ufunc(
-        st.nbinom.cdf,
-        observations - 1,  # exclusive: probability of subceeding observation value
-        *nbinom_pars_from_mean_var(mean, mean + variance),
-    )
-
-    ds = xr.Dataset(
-        {
-            "survival": sf,
-            "survival_inclusive": sf_inclusive,
-            "cumulative": cdf,
-            "cumulative_exclusive": cdf_exclusive,
-        }
-    ).to_dataarray("p_metric")
-
-    return ds
-
-
-def get_cumulative_probabilities(observations, mean, variance=None):
-    """Return cumulative probability summaries for Poisson and optional NB models."""
-    ds = xr.Dataset()
-    ds["poisson"] = get_cumulative_probabilities_poisson(observations, mean)
-    if variance is not None:
-        ds["nbinom"] = get_cumulative_probabilities_nbinom(observations, mean, variance)
-
-    return ds.to_dataarray("distribution")
-
-
 def get_count_fractiles(mean, variance=None, q=None):
     """Compute count fractiles for Poisson and optional overdispersed forecasts."""
     if q is None:
@@ -243,3 +180,12 @@ def compute_log_likelihood(
         }
     )
     return ds.to_array("likelihood_function")
+
+
+__all__ = [
+    "compute_log_likelihood",
+    "get_count_fractiles",
+    "get_cumulative_probabilities_poisson",
+    "get_default_fractiles",
+    "nbinom_pars_from_mean_var",
+]

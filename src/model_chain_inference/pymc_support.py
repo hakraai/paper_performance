@@ -4,7 +4,6 @@ import string
 import xarray as xr
 import numpy as np
 import pymc as pm
-from pymc.model.transform.conditioning import do
 from pymc.pytensorf import convert_data
 import pytensor.tensor as pt
 import pytensor
@@ -21,15 +20,6 @@ def apply_aligned(function, variables, m=None):
     return (result, dims)
 
 
-def apply_indexing_by_name(var_ids, index_parameters=None, m=None):
-    """
-    Apply indexing to a list of variable ids using the given index parameters.
-    The function returns a dictionary mapping variable ids to their indexed values.
-    """
-    result = apply_indexing(var_ids, index_parameters, m=m)
-    return dict(zip(var_ids, result))
-
-
 def apply_indexing(var_ids=None, index_parameters=None, m=None):
     """
     Apply indexing to a list of variable ids using the given index parameters.
@@ -37,15 +27,6 @@ def apply_indexing(var_ids=None, index_parameters=None, m=None):
     """
     m = pm.modelcontext(m)
     return [apply_indexing_to_var(v, index_parameters, m=m) for v in var_ids]
-
-
-def apply_mixing_by_name(var_ids, mixing_parameters, m=None):
-    """
-    Apply mixing to a list of variable ids using the given mixing parameters.
-    The function returns a dictionary mapping variable ids to their mixed values.
-    """
-    result = apply_mixing(var_ids, mixing_parameters, m=m)
-    return dict(zip(var_ids, result))
 
 
 def apply_mixing(var_ids, mixing_parameters, m=None, aggregate=True):
@@ -57,15 +38,6 @@ def apply_mixing(var_ids, mixing_parameters, m=None, aggregate=True):
     return [
         apply_mixing_to_var(v, mixing_parameters, m=m, aggregate=aggregate) for v in var_ids
     ]
-
-
-def apply_interpolation_by_name(var_ids, interpolating_parameters, m=None):
-    """
-    Apply interpolation to a list of variable ids using the given interpolating parameters.
-    The function returns a dictionary mapping variable ids to their interpolated values.
-    """
-    result = apply_interpolation(var_ids, interpolating_parameters, m=m)
-    return dict(zip(var_ids, result))
 
 
 def apply_interpolation(var_ids, interpolating_parameters, m=None):
@@ -211,119 +183,6 @@ def apply_mixing_to_var(var_id, mixing_parameters, m=None, prefix=None, aggregat
         new_dims = dims
 
     return (new_var, new_dims)
-
-
-def apply_mixers(to_be_mixed, parameters, disagg_dims=None, prefix="mix_"):
-    """
-    Apply mixers to a variable using the given parameters.
-    The function returns the mixed variable.
-    The parameters are a dictionary of xarray datasets.
-    The prefix is used to identify the mixers.
-    The disagg_dims are the dimensions to keep disaggregated.
-    """
-    if disagg_dims is None:
-        disagg_dims = []
-    mixers = get_mixers(to_be_mixed, parameters, prefix)
-    mdims = [d for d in mixers if d not in disagg_dims]
-    if len(mdims) > 0:
-        to_be_mixed = xr.dot(
-            to_be_mixed,
-            *mixers.values(),
-            dim=mdims,
-            optimize=True,
-        )
-
-    return to_be_mixed
-
-
-def indexers_to_mixers(
-    pars, ref_pars=None, index_prefix="idx_", mix_prefix="mix_", drop=False
-):
-    """
-    Convert indexers to mixers.
-    The indexers are used to create a mixer.
-    The mixer is a weighted sum of the reference parameters.
-    The output is a dictionary of mixers.
-    """
-    if ref_pars is None:
-        ref_pars = pars
-    indexed_dims = [id[len(index_prefix) :] for id in pars if index_prefix in id]
-    for dim in indexed_dims:
-        indexer = pars[index_prefix + dim]
-        mixer = xr.zeros_like(ref_pars[dim] * indexer)
-        mixer[{dim: indexer}] = 1.0
-        pars[mix_prefix + dim] = mixer
-        if drop:
-            del pars[index_prefix + dim]
-
-    return pars
-
-
-def interpolators_to_mixers(
-    pars, ref_pars=None, interp_prefix="itp_", mix_prefix="mix_", drop=False
-):
-    """
-    Convert interpolators to mixers.
-    The interpolators are used to create a mixer.
-    The mixer is a weighted sum of the reference parameters.
-    The output is a dictionary of mixers.
-    """
-    if ref_pars is None:
-        ref_pars = pars
-    itp_dims = [id[len(interp_prefix) :] for id in pars if interp_prefix in id]
-    for dim in itp_dims:
-        interpolator = pars[interp_prefix + dim]
-        index = np.floor(interpolator).astype(int)
-        w1 = interpolator - index
-        w0 = 1 - w1
-        mixer = xr.zeros_like(ref_pars[dim] * interpolator)
-        mixer[{dim: index}] = w0
-        mixer[{dim: index + 1}] = w1
-        pars[mix_prefix + dim] = mixer
-        if drop:
-            del pars[interp_prefix + dim]
-
-    return pars
-
-
-def scale_interpolators(
-    pars, ref_pars=None, interp_prefix="itp_", scaled_prefix="scl_"
-):
-    """
-    Scale the interpolators to the reference parameters.
-    The reference parameters are used to scale the interpolators.
-    The output is a dictionary of scaled interpolators.
-    """
-    if ref_pars is None:
-        ref_pars = pars
-    itp_dims = [id[len(interp_prefix) :] for id in pars if interp_prefix in id]
-    for dim in itp_dims:
-        interpolator = pars[interp_prefix + dim]
-        coords = ref_pars[dim]
-        coords = coords.assign_coords({dim: np.arange(coords.size).astype(float)})
-        pars[scaled_prefix + dim] = coords.interp({dim: interpolator}).reset_coords(
-            drop=True
-        )
-
-    return pars
-
-
-def get_mixers(variable, parameters, prefix="mix_"):
-    """
-    Get the mixers for a variable from the parameters.
-    The parameters are a dictionary of xarray datasets.
-    The prefix is used to identify the mixers.
-    The output is an xarray dataset with the mixers.
-    """
-    mixers = xr.Dataset(
-        {
-            id[len(prefix) :]: parameters[id]
-            for id in parameters
-            if id.startswith(prefix) and id[len(prefix) :] in variable.dims
-        }
-    ).reset_coords()
-
-    return mixers
 
 
 def register_indexing_parameters(parameters, m=None, prefix="idx_"):
@@ -585,43 +444,22 @@ def diff_time(arg_tpl, time_index):
     return (output, output_dims)
 
 
-def lognormal_sigma(mean, std):
-    """
-    Compute the sigma parameter of a lognormal distribution based
-    on the desired mean and standard deviation.
-    """
-    return pt.sqrt(pt.log(1 + (std**2 / mean**2)))
-
-
-def lognormal_mu(mean, std):
-    """
-    Compute the mu parameter of a lognormal distribution based
-    on the desired mean and standard deviation.
-    """
-    return pt.log(mean**2 / pt.sqrt(std**2 + mean**2))
-
-
-def extract_means(idata, variables=None):
-    """
-    Extract the means of the posterior samples from the idata object.
-    If no variables are provided, compute the mean for all variables.
-    """
-    if variables is None:
-        means = idata["posterior"].mean(["chain", "draw"])
-    else:
-        if isinstance(variables, str):
-            variables = [variables]
-        means = (idata["posterior"][variables]).mean(["chain", "draw"])
-    means_dict = means.to_dict()["data_vars"]
-    return {k: v["data"] for k, v in means_dict.items()}
-
-
-def do_mean(model, idata, variables=None):
-    """
-    Compute the mean of the posterior samples for the given variables.
-    If no variables are provided, compute the mean for all variables.
-    """
-
-    means = extract_means(idata, variables)
-
-    return do(model, means)
+__all__ = [
+    "align_vars",
+    "align_vars_with",
+    "apply_aligned",
+    "apply_indexing",
+    "apply_indexing_to_var",
+    "apply_interpolation",
+    "apply_interpolation_to_var",
+    "apply_mixing",
+    "apply_mixing_to_var",
+    "diff_time",
+    "einsum_multiply",
+    "get_var_dims",
+    "register_data",
+    "register_indexing_parameters",
+    "register_interpolating_parameters",
+    "register_mixing_parameters",
+    "retrieve_parameter",
+]
