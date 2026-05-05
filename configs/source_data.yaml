@@ -1,0 +1,24 @@
+resources_root: data/resources
+source_data_root: data/generated_source_data
+catalogue_end: 2025-11-29T09:55:42
+support_buffer: 500.0
+bernstein_degrees:
+  - 4
+rmax:
+  - 0.375
+  - 0.4
+  - 0.425
+  - 0.45
+  - 0.475
+  - 0.5
+  - 0.525
+sigma:
+  - 2200.0
+  - 2400.0
+  - 2600.0
+  - 2800.0
+  - 3000.0
+  - 3200.0
+  - 3400.0
+  - 3600.0
+  - 3800.0

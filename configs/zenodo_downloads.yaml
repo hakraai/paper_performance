@@ -1,0 +1,19 @@
+record_api_url: https://zenodo.org/api/records/20025710/files
+archives:
+  resources:
+    archive_name: resources-bundle.zip
+    download_dir: data/release/downloads
+    extract_root: .
+    package_output_dir: data/release/packages
+    expected_cache_paths:
+      - data/resources
+  generated_artifacts:
+    archive_name: generated-artifacts-cache.zip
+    download_dir: data/release/downloads
+    extract_root: .
+    package_output_dir: data/release/packages
+    expected_cache_paths:
+      - data/generated_model_data
+      - data/generated_calibrations
+      - data/generated_assessment
+      - figures/generated_paper

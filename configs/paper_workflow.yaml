@@ -1,0 +1,5 @@
+source_data_config: configs/source_data.yaml
+model_data_config: configs/model_data.yaml
+calibration_config: configs/model_calibration.yaml
+performance_assessment_config: configs/performance_assessment.yaml
+figure_generation_config: configs/figure_generation.yaml

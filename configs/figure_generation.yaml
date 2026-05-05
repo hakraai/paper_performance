@@ -1,0 +1,35 @@
+experiment: groningen_1995_2025
+source_data_root: data/generated_source_data
+model_specs_file: configs/experiments/groningen_1995_2025/model_specs.yaml
+calibration_root: data/generated_calibrations
+artifact_dir: data/generated_assessment
+figure_dir: figures/generated_paper
+figure_formats:
+  - .pdf
+  - .png
+figure_dpi: 600
+pdf_fonttype: 42
+ps_fonttype: 42
+line_joinstyle: round
+perspectives:
+  - prospective
+  - retrospective
+models:
+  - ETS_rmax_etasKac
+  - EVTS_rmax_etasKac
+  - ETS_bs4_etasKac
+  - EVTS_bs4_etasKac
+model_names:
+  ETS_rmax_etasKac: ETS-ETF
+  EVTS_rmax_etasKac: EVTS-ETF
+  ETS_bs4_etasKac: ETS-BS4-ETF
+  EVTS_bs4_etasKac: EVTS-BS4-ETF
+timeframe_testing:
+  - 2020-10-01
+  - 2025-10-01
+timeframe_forecast:
+  - 1995-01-01
+  - 2025-10-01
+timeframe_plotting:
+  - 1995-01-01
+  - 2028-01-01

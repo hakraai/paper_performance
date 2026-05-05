@@ -1,0 +1,57 @@
+[workspace]
+name = "paper_performance"
+version = "0.1.0"
+description = "Performance testing, comparison and selection of induced seismicity rate models for the Groningen gas field"
+authors = ["D.A. Kraaijpoel"]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[activation]
+
+[activation.env]
+PYTHONPATH = "$PIXI_PROJECT_ROOT/src/chaintools:$PIXI_PROJECT_ROOT/src"
+JAX_ENABLE_COMPILATION_CACHE = "1"
+JAX_COMPILATION_CACHE_DIR = "$PIXI_PROJECT_ROOT/.cache/jax_compilation"
+
+[tasks]
+download-resources = "python scripts/download_resources.py --archive-key resources --cache reuse"
+download-artifacts = "python scripts/download_artifacts.py --archive-key generated_artifacts --cache reuse"
+package-resources = "python scripts/package_archive.py --archive-key resources --cache reuse"
+package-artifacts = "python scripts/package_archive.py --archive-key generated_artifacts --cache reuse"
+workflow-source-data = "python scripts/run_source_data.py --config configs/source_data.yaml --cache reuse"
+workflow-model-data = "python scripts/run_model_data.py --config configs/model_data.yaml --cache reuse"
+workflow-calibration = "python scripts/run_model_calibration.py --config configs/model_calibration.yaml --cache reuse"
+workflow-assessment = "python scripts/run_performance_assessment.py --config configs/performance_assessment.yaml --cache reuse"
+workflow-figures = "python scripts/run_figure_generation.py --config configs/figure_generation.yaml --cache reuse"
+workflow = "python scripts/run_paper_workflow.py --config configs/paper_workflow.yaml --cache reuse"
+workflow-refresh = "python scripts/run_paper_workflow.py --config configs/paper_workflow.yaml --cache refresh"
+
+[dependencies]
+python = "==3.11.9"
+numpy = "*"
+geopandas = "==1.0.1"
+xarray = "==2025.10.1"
+tqdm = "==4.66.1"
+scipy = "==1.16.0"
+matplotlib = "==3.10.0"
+arviz = "==0.22.0"
+pandas = "==2.2.3"
+dask = "*"
+distributed = "*"
+ipywidgets = "==8.1.7"
+pytensor = "==2.31.7"
+pymc = "==5.25.1"
+zarr = "==2.18.7"
+jupyterlab = "*"
+requests = "==2.31.0"
+pyyaml = "==6.0"
+rioxarray = "==0.19.0"
+h5py = "==3.11.0"
+numba = "==0.61.2"
+h5netcdf = "==1.4.1"
+blackjax = "==1.2.4"
+jax = "==0.5.2"
+jaxlib = "==0.5.2"
+importlib_resources = "*"
+configargparse = "*"
+nutpie = "==0.14.3"
